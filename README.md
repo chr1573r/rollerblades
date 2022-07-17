@@ -2,7 +2,7 @@
 Distribution tool
 
 # setup
-make a dir called 'cfg'
+make a dir called 'cfg' and 'repos'
 in 'cfg', make a file called 'repos.txt'. Add your repo names here.
 
 in 'cfg', make a file called 'settings.txt'. Rollerblades will source this files and expect some vars to be set here.
