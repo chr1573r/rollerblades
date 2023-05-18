@@ -49,7 +49,7 @@ deploy (){
 	while IFS= read -r repo; do
 		url="${CLONE_PREFIX}/${repo}${CLONE_SUFFIX}"
 		repo_dir="${REPOS_DIR}/${repo}"
-		release="${OUTPUT_DIR}/${repo}.tar.gz"
+		release="${OUTPUT_DIR}/${repo}"
 		echo "Processing '$repo'"
 		((repo_count++))
 
@@ -62,16 +62,19 @@ deploy (){
 		fi
 
 		cd "${repo_dir}"
-		git archive --format=tar HEAD | gzip > "${release}"
+		git archive --format=tar HEAD | gzip > "${release}.tar.gz"
 		if "$SIGNING"; then
 			echo "Signing release.."
-			sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}"
+			sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
 			echo -n "Checking signature.. "
-			sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}" && ((repo_success++))
-		elif [[ -f "${release}" ]]; then
-			((repo_success++))	
+			if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"; then
+				((repo_success++))
+				date > "${release}.updated"
+			fi
+		elif [[ -f "${release}.tar.gz" ]]; then
+			((repo_success++))
+			date > "${release}.updated"
 		fi
-		echo "$date" > "${OUTPUT_DIR}/${repo}.updated.txt"
 		cd ..
 		echo "Finished processing '$repo'"
 		echo
