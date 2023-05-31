@@ -111,6 +111,9 @@ deploy (){
 	repo_count=0
 	repo_success=0
 	repo_skip=0
+
+	repo_deploy=false
+
 	# Process each repo
 	while IFS= read -r repo; do
 		url="${CLONE_PREFIX}/${repo}${CLONE_SUFFIX}"
@@ -118,50 +121,59 @@ deploy (){
 		release="${OUTPUT_DIR}/${repo}"
 		ut "##### Processing '$repo' #####"
 		((repo_count++))
-		ut "Checking if remote repo has changed since last deploy"
-		if git remote update > /dev/null; then
-		repo_local_revision="$(git rev-parse HEAD)"
-		repo_remote_revision="$(git rev-parse @{u})"
-			if [[ "$repo_remote_revision" != "$repo_remote_revision" ]]; then
-				# Pull repo
-				ut "Remote has changed, updating local repo"
-				if [[ -d "${repo_dir}" ]]; then
-					cd "${repo_dir}"
-					git pull
+
+		if [[ -d "${repo_dir}" ]]; then
+			cd "${repo_dir}"
+			ut "Checking if remote repo has changed since last deploy"
+			if git remote update > /dev/null; then
+				repo_local_revision="$(git rev-parse HEAD)"
+				repo_remote_revision="$(git rev-parse @{u})"
+				if [[ "$repo_remote_revision" != "$repo_remote_revision" ]]; then
+					ut "Remote has changed, updating local repo"
+			
+					# Pull repo
+					
 					repo_git_status="$?"
-					cd ..
-				else
-					git -C "${REPOS_DIR}" clone "$url"
-					repo_git_status="$?"
-				fi
-				
-				# Publish repo if pull was OK
-				ut "Make release file"
-				if [[ "$repo_git_status" -eq 0 ]]; then
-					cd "${repo_dir}"
-					git archive --format=tar HEAD | gzip > "${release}.tar.gz"
-					if "$SIGNING"; then
-						ut "Signing release.."
-						sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
-						utn "Checking signature.. "
-						if ut $(sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"); then
-							((repo_success++))
-							date > "${release}.updated"
-						fi
-					elif [[ -f "${release}.tar.gz" ]]; then
-						((repo_success++))
-						date > "${release}.updated"
+					if git pull; then
+						repo_deploy=true
+					else
+						ut "Git pull failed for '$repo'"
 					fi
-					cd ..
 				else
-					ut "Git pull failed for '$repo'"
+					ut "No changes to deploy for '$repo'"
+					((repo_skip++))
 				fi
 			else
-				ut "No changes to deploy for '$repo'"
-				((repo_skip++))
+				ut "Git remote update failed for '$repo'"
 			fi
+			cd ..
 		else
-			ut "Git remote update failed for '$repo'"
+			ut "Cloning new repo"
+			if git -C "${REPOS_DIR}" clone "$url"; then
+				repo_deploy=true
+			else
+				ut "Git clone failed for '$repo'"
+			fi
+		fi
+
+		# Publish repo if applicable
+		if $repo_deploy; then
+			ut "Publishing release.."
+			cd "${repo_dir}"
+			git archive --format=tar HEAD | gzip > "${release}.tar.gz"
+			if "$SIGNING"; then
+				ut "Signing release.."
+				sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
+				utn "Checking signature.. "
+				if ut $(sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"); then
+					((repo_success++))
+					date > "${release}.updated"
+				fi
+			elif [[ -f "${release}.tar.gz" ]]; then
+				((repo_success++))
+				date > "${release}.updated"
+			fi
+			cd ..
 		fi
 		ut "#####  Finished '$repo'  #####"
 	done < "${CFG_DIR}/repos.txt"
