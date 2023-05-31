@@ -109,6 +109,8 @@ weblog_html(){
 # download and publish repos
 deploy (){
 	repo_count=0
+	repo_success=0
+	repo_skip=0
 	# Process each repo
 	while IFS= read -r repo; do
 		url="${CLONE_PREFIX}/${repo}${CLONE_SUFFIX}"
@@ -116,39 +118,51 @@ deploy (){
 		release="${OUTPUT_DIR}/${repo}"
 		ut "##### Processing '$repo' #####"
 		((repo_count++))
-
-		# Pull repo
-		if [[ -d "${repo_dir}" ]]; then
-			cd "${repo_dir}"
-			git pull
-			repo_git_status="$?"
-			cd ..
-		else
-			git -C "${REPOS_DIR}" clone "$url"
-			repo_git_status="$?"
-		fi
-		
-		# Publish repo if pull was OK
-		if [[ "$repo_git_status" -eq 0 ]]; then
-			cd "${repo_dir}"
-			git archive --format=tar HEAD | gzip > "${release}.tar.gz"
-				if "$SIGNING"; then
-					ut "Signing release.."
-					sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
-					utn "Checking signature.. "
-					if ut $(sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"); then
+		ut "Checking if remote repo has changed since last deploy"
+		if git remote update > /dev/null; then
+		repo_local_revision="$(git rev-parse HEAD)"
+		repo_remote_revision="$(git rev-parse @{u})"
+			if [[ "$repo_remote_revision" != "$repo_remote_revision" ]]; then
+				# Pull repo
+				ut "Remote has changed, updating local repo"
+				if [[ -d "${repo_dir}" ]]; then
+					cd "${repo_dir}"
+					git pull
+					repo_git_status="$?"
+					cd ..
+				else
+					git -C "${REPOS_DIR}" clone "$url"
+					repo_git_status="$?"
+				fi
+				
+				# Publish repo if pull was OK
+				ut "Make release file"
+				if [[ "$repo_git_status" -eq 0 ]]; then
+					cd "${repo_dir}"
+					git archive --format=tar HEAD | gzip > "${release}.tar.gz"
+					if "$SIGNING"; then
+						ut "Signing release.."
+						sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
+						utn "Checking signature.. "
+						if ut $(sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"); then
+							((repo_success++))
+							date > "${release}.updated"
+						fi
+					elif [[ -f "${release}.tar.gz" ]]; then
 						((repo_success++))
 						date > "${release}.updated"
 					fi
-				elif [[ -f "${release}.tar.gz" ]]; then
-					((repo_success++))
-					date > "${release}.updated"
+					cd ..
+				else
+					ut "Git pull failed for '$repo'"
 				fi
-			cd ..
+			else
+				ut "No changes to deploy for '$repo'"
+				((repo_skip++))
+			fi
 		else
-			ut "Git pull failed for '$repo'"
+			ut "Git remote update failed for '$repo'"
 		fi
-
 		ut "#####  Finished '$repo'  #####"
 	done < "${CFG_DIR}/repos.txt"
 }
@@ -159,16 +173,16 @@ while true; do
 	weblog_init
 	header
 	ut "$(date): Start"
-	ut "Downloading and publishing repos"
+	ut "Processing repos"
 	deploy
-	multilog "Rollerblades - Latest deployment: $(date)."
-	multilog "${repo_success}/${repo_count} repos deployed successfully."
+	multilog "Rollerblades - $(date)"
+	multilog "Repos processed: ${repo_count} ($repo_success deployed, $repo_skip skipped, $((repo_count - repo_success - repo_skip)) failed)"
 	weblog_html
-	ut '# # # # # # # #'
 	if ! [[ -z "${SLEEP_TIME}" ]]; then
 		ut "Sleeping (${SLEEP_TIME})"
 		sleep "${SLEEP_TIME}"
 	else
 		exit
 	fi
+	ut '# # # # # # # #'
 done
