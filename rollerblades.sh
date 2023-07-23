@@ -128,7 +128,7 @@ deploy (){
 			if git remote update > /dev/null; then
 				repo_local_revision="$(git rev-parse HEAD)"
 				repo_remote_revision="$(git rev-parse @{u})"
-				if [[ "$repo_remote_revision" != "$repo_remote_revision" ]]; then
+				if [[ "$repo_local_revision" != "$repo_remote_revision" ]]; then
 					ut "Remote has changed, updating local repo"
 			
 					# Pull repo
