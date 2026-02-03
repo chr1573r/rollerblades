@@ -17,7 +17,11 @@ A lightweight distribution tool that monitors git repositories and publishes the
 
 ```bash
 # Create directories
-mkdir -p cfg repos
+mkdir -p cfg repos keys
+
+# Generate signing keys
+openssl genrsa -out keys/private.pem 4096
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 
 # Add repos to monitor (one per line)
 echo "my-repo" > cfg/repos.txt
@@ -28,7 +32,8 @@ SLEEP_TIME=5m
 OUTPUT_DIR=/var/www/packages
 CLONE_PREFIX=https://github.com/your-org
 CLONE_SUFFIX=.git
-SIGNING=false
+SIGNING_PRIVATE_KEY="$CFG_DIR/../keys/private.pem"
+SIGNING_PUBLIC_KEY="$CFG_DIR/../keys/public.pem"
 EOF
 
 # Run
@@ -38,8 +43,14 @@ EOF
 ### Docker
 
 ```bash
-# Create config
-mkdir config
+# Create config and keys directories
+mkdir -p config keys
+
+# Generate signing keys
+openssl genrsa -out keys/private.pem 4096
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
+
+# Add repos to monitor
 echo "my-repo" > config/repos.txt
 
 # Run with docker compose
@@ -70,11 +81,10 @@ Environment variables take precedence over config file values.
 | `OUTPUT_DIR` | `RB_OUTPUT_DIR` | `/output` | Where to publish archives |
 | `CLONE_PREFIX` | `RB_CLONE_PREFIX` | `https://github.com` | Git URL prefix |
 | `CLONE_SUFFIX` | `RB_CLONE_SUFFIX` | `.git` | Git URL suffix |
-| `SIGNING` | `RB_SIGNING` | `false` | Enable package signing |
-| `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | - | Path to private key |
-| `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | - | Path to public key |
+| `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | **required** | Path to private key |
+| `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | **required** | Path to public key |
 | `LOG_FILE` | `RB_LOG_FILE` | - | Optional internal log file |
-| `MOTD` | `RB_MOTD` | - | Optional message file for index.html |
+| `MOTD` | `RB_MOTD` | `cfg/motd.txt` | Optional message of the day file |
 
 ### Directory Overrides (for containers)
 
@@ -94,25 +104,39 @@ dotfiles
 
 ## Package Signing
 
+All packages are cryptographically signed using SHA256. Signing is mandatory.
+
 Generate signing keys:
 
 ```bash
 # Generate private key
-openssl genrsa -out cfg/rollerblades.key 4096
+openssl genrsa -out keys/private.pem 4096
 
 # Generate public key
-openssl rsa -in cfg/rollerblades.key -pubout -out cfg/rollerblades.pub
+openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 ```
 
-Enable in settings:
+Configure in settings.txt or via environment variables:
 
 ```bash
-SIGNING=true
-SIGNING_PRIVATE_KEY="$CFG_DIR/rollerblades.key"
-SIGNING_PUBLIC_KEY="$CFG_DIR/rollerblades.pub"
+SIGNING_PRIVATE_KEY="/path/to/private.pem"
+SIGNING_PUBLIC_KEY="/path/to/public.pem"
 ```
 
-The public key is automatically copied to the output directory for clients.
+The public key is automatically copied to the output directory as `rollerblades.pub` for clients to verify packages.
+
+## Message of the Day (MOTD)
+
+You can display a server message to clients by creating an MOTD file:
+
+```bash
+echo "Welcome to my package server!" > cfg/motd.txt
+```
+
+The MOTD is:
+- Displayed on the `index.html` status page (HTML escaped for security)
+- Served as `motd.txt` for sk8 clients to display
+- Automatically sanitized (max 4KB, control characters stripped)
 
 ## Docker Deployment
 
@@ -131,12 +155,15 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./config/repos.txt:/config/repos.txt:ro
+      - ./config:/config:ro
+      - ./keys:/keys:ro
       - rb-repos:/repos
       - rb-output:/output
     environment:
       RB_SLEEP_TIME: "5m"
       RB_CLONE_PREFIX: "https://github.com/your-org"
+      RB_SIGNING_PRIVATE_KEY: "/keys/private.pem"
+      RB_SIGNING_PUBLIC_KEY: "/keys/public.pem"
 
 volumes:
   rb-repos:
@@ -147,19 +174,20 @@ volumes:
 
 | Path | Description |
 |------|-------------|
-| `/config/repos.txt` | Package list (required, mount as file) |
+| `/config` | Config directory containing repos.txt (required) |
+| `/keys` | Signing keys directory (required) |
 | `/repos` | Git clones (persistent volume) |
 | `/output` | Published packages (served by nginx) |
-| `/keys` | Signing keys (optional) |
 
 ## Output Structure
 
 ```
 OUTPUT_DIR/
-├── index.html           # Status page
+├── index.html           # Status page (includes MOTD if present)
 ├── packages.txt         # Package index for sk8
 ├── rollerblades.log     # Status log
-├── rollerblades.pub     # Public key (if signing enabled)
+├── rollerblades.pub     # Public key for verification
+├── motd.txt             # Server message (optional)
 ├── my-tool.tar.gz       # Package archive
 ├── my-tool.signature    # Package signature
 └── my-tool.updated      # Last update timestamp

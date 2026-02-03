@@ -7,24 +7,23 @@ services:
     ports:
       - "8080:80"
     volumes:
-      # Required: repos.txt file listing packages to distribute
-      - ./config/repos.txt:/config/repos.txt:ro
+      # Required: config directory with repos.txt
+      - ./config:/config:ro
       # Persistent storage for cloned repos
       - rb-repos:/repos
       # Output directory (served by nginx)
       - rb-output:/output
-      # Optional: signing keys (uncomment if using signing)
-      # - ./keys:/keys:ro
+      # Required: signing keys
+      - ./keys:/keys:ro
     environment:
       # How often to check for updates
       RB_SLEEP_TIME: "5m"
       # Git clone URL template
       RB_CLONE_PREFIX: "https://github.com/your-org"
       RB_CLONE_SUFFIX: ".git"
-      # Signing config (uncomment and mount keys to enable)
-      RB_SIGNING: "false"
-      # RB_SIGNING_PRIVATE_KEY: "/keys/private.pem"
-      # RB_SIGNING_PUBLIC_KEY: "/keys/public.pem"
+      # Signing keys (required)
+      RB_SIGNING_PRIVATE_KEY: "/keys/private.pem"
+      RB_SIGNING_PUBLIC_KEY: "/keys/public.pem"
     # Optional: run once and exit (for testing or cron-triggered runs)
     # command: ["--once"]
 

@@ -24,14 +24,13 @@ RUN chmod +x /docker-entrypoint.sh
 COPY nginx.conf /etc/nginx/http.d/default.conf
 
 # Environment variables with defaults
-# Note: Signing key paths should be set at runtime, not in image
+# Signing key paths must be set at runtime via docker-compose or -e flags
 ENV RB_SLEEP_TIME=5m \
     RB_OUTPUT_DIR=/output \
     RB_CFG_DIR=/config \
     RB_REPOS_DIR=/repos \
     RB_CLONE_PREFIX=https://github.com \
-    RB_CLONE_SUFFIX=.git \
-    RB_SIGNING=false
+    RB_CLONE_SUFFIX=.git
 
 # Volumes
 VOLUME ["/config", "/repos", "/output", "/keys"]

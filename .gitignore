@@ -1,4 +1,20 @@
-cfg
-repos
-dev
+# Config directories
+cfg/
+config/
+
+# Cloned repos
+repos/
+
+# Output
+output/
+
+# Signing keys (sensitive!)
+keys/
+*.pem
+
+# Logs
 rollerblades.log
+*.log
+
+# Development
+dev/

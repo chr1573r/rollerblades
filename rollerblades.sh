@@ -67,11 +67,28 @@ SLEEP_TIME="${RB_SLEEP_TIME:-${SLEEP_TIME:-5m}}"
 OUTPUT_DIR="${RB_OUTPUT_DIR:-${OUTPUT_DIR:-/output}}"
 CLONE_PREFIX="${RB_CLONE_PREFIX:-${CLONE_PREFIX:-https://github.com}}"
 CLONE_SUFFIX="${RB_CLONE_SUFFIX:-${CLONE_SUFFIX:-.git}}"
-SIGNING="${RB_SIGNING:-${SIGNING:-false}}"
 SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-}}"
 SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-}}"
 LOG_FILE="${RB_LOG_FILE:-${LOG_FILE:-}}"
 MOTD="${RB_MOTD:-${MOTD:-}}"
+
+# Validate signing keys (signing is mandatory)
+if [[ -z "$SIGNING_PRIVATE_KEY" ]] || [[ -z "$SIGNING_PUBLIC_KEY" ]]; then
+	echo "Error: Signing keys are required."
+	echo "Set SIGNING_PRIVATE_KEY and SIGNING_PUBLIC_KEY in settings.txt"
+	echo "or via RB_SIGNING_PRIVATE_KEY and RB_SIGNING_PUBLIC_KEY env vars."
+	exit 1
+fi
+
+if [[ ! -f "$SIGNING_PRIVATE_KEY" ]]; then
+	echo "Error: Private key not found: $SIGNING_PRIVATE_KEY"
+	exit 1
+fi
+
+if [[ ! -f "$SIGNING_PUBLIC_KEY" ]]; then
+	echo "Error: Public key not found: $SIGNING_PUBLIC_KEY"
+	exit 1
+fi
 
 # Ensure output directory exists
 if ! [[ -d "$OUTPUT_DIR" ]]; then
@@ -82,10 +99,20 @@ if ! [[ -d "$OUTPUT_DIR" ]]; then
 	}
 fi
 
-# Copy public key to output dir if signing is enabled
-if "$SIGNING" && [[ -f "$SIGNING_PUBLIC_KEY" ]]; then
-	cp "$SIGNING_PUBLIC_KEY" "${OUTPUT_DIR}/rollerblades.pub"
+# Copy public key to output dir for clients
+cp "$SIGNING_PUBLIC_KEY" "${OUTPUT_DIR}/rollerblades.pub"
+
+# Copy MOTD to output dir if it exists
+MOTD_FILE="${RB_MOTD:-${MOTD:-${CFG_DIR}/motd.txt}}"
+if [[ -f "$MOTD_FILE" ]]; then
+	# Limit MOTD size and strip control chars for safety
+	head -c 4096 "$MOTD_FILE" | tr -cd '[:print:]\n' > "${OUTPUT_DIR}/motd.txt"
 fi
+
+# HTML escape function for safe output
+html_escape() {
+	sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g'
+}
 
 # determine if internal logging will be enabled
 if [[ -z "$LOG_FILE" ]]; then
@@ -160,9 +187,18 @@ weblog(){
 
 #copy published log to index.html and wrap with pre tags
 weblog_html(){
-	echo '<pre>' > "${OUTPUT_DIR}/index.html"
-	cat "${OUTPUT_DIR}/rollerblades.log" >> "${OUTPUT_DIR}/index.html"
-	echo '</pre>' >> "${OUTPUT_DIR}/index.html"
+	{
+		echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rollerblades</title></head><body>'
+		# Include MOTD if it exists (HTML escaped)
+		if [[ -f "${OUTPUT_DIR}/motd.txt" ]]; then
+			echo '<div style="background:#f0f0f0;padding:10px;margin-bottom:10px;border-radius:5px;">'
+			html_escape < "${OUTPUT_DIR}/motd.txt"
+			echo '</div>'
+		fi
+		echo '<pre>'
+		html_escape < "${OUTPUT_DIR}/rollerblades.log"
+		echo '</pre></body></html>'
+	} > "${OUTPUT_DIR}/index.html"
 }
 
 # Generate package index file
@@ -300,21 +336,16 @@ deploy (){
 				continue
 			fi
 
-			if "$SIGNING"; then
-				ut "Signing release.."
-				sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
-				ut "Checking signature.."
-				if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
-					ut "Signature verified."
-					((repo_success++))
-					date > "${release}.updated"
-				else
-					ut "Error: Signature verification failed for '$repo'"
-					rm -f "${release}.tar.gz" "${release}.signature"
-				fi
-			elif [[ -f "${release}.tar.gz" ]]; then
+			ut "Signing release.."
+			sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
+			ut "Checking signature.."
+			if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
+				ut "Signature verified."
 				((repo_success++))
 				date > "${release}.updated"
+			else
+				ut "Error: Signature verification failed for '$repo'"
+				rm -f "${release}.tar.gz" "${release}.signature"
 			fi
 		fi
 		ut "#####  Finished '$repo'  #####"
