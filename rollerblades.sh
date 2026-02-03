@@ -1,4 +1,35 @@
 #!/usr/bin/env bash
+
+# Parse command line arguments
+ONESHOT=false
+SHOW_STATUS=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --once|-1)
+      ONESHOT=true
+      shift
+      ;;
+    --status|-s)
+      SHOW_STATUS=true
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: rollerblades.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --once, -1    Run once and exit (no loop)"
+      echo "  --status, -s  Show deployment status and exit"
+      echo "  --help, -h    Show this help message"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      exit 1
+      ;;
+  esac
+done
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if ! [[ -d "$SCRIPT_DIR" ]]; then
@@ -100,10 +131,80 @@ weblog(){
 }
 
 #copy published log to index.html and wrap with pre tags
-weblog_html(){ 
+weblog_html(){
 	echo '<pre>' > "${OUTPUT_DIR}/index.html"
 	cat "${OUTPUT_DIR}/rollerblades.log" >> "${OUTPUT_DIR}/index.html"
 	echo '</pre>' >> "${OUTPUT_DIR}/index.html"
+}
+
+# Generate package index file
+generate_index() {
+	local index_file="${OUTPUT_DIR}/packages.txt"
+	local index_tmp="${OUTPUT_DIR}/packages.txt.tmp"
+
+	ut "Generating package index..."
+
+	echo "# Package index generated $(date)" > "$index_tmp"
+	echo "# Server: rollerblades" >> "$index_tmp"
+
+	while IFS= read -r repo; do
+		# Skip empty lines and comments
+		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+		# Only list repos that have been successfully deployed
+		if [[ -f "${OUTPUT_DIR}/${repo}.tar.gz" ]]; then
+			echo "$repo" >> "$index_tmp"
+		fi
+	done < "${CFG_DIR}/repos.txt"
+
+	mv "$index_tmp" "$index_file"
+	ut "Package index updated: $index_file"
+}
+
+# Show deployment status
+show_status() {
+	header
+	echo "Deployment Status"
+	echo "================="
+	echo ""
+	echo "Output directory: $OUTPUT_DIR"
+	echo ""
+
+	if [[ ! -f "${CFG_DIR}/repos.txt" ]]; then
+		echo "Error: repos.txt not found"
+		exit 1
+	fi
+
+	echo "Packages:"
+	while IFS= read -r repo; do
+		# Skip empty lines and comments
+		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+
+		local release="${OUTPUT_DIR}/${repo}"
+		if [[ -f "${release}.tar.gz" ]]; then
+			local size
+			size=$(du -h "${release}.tar.gz" 2>/dev/null | cut -f1)
+			local updated="unknown"
+			if [[ -f "${release}.updated" ]]; then
+				updated=$(cat "${release}.updated")
+			fi
+			local signed="no"
+			if [[ -f "${release}.signature" ]]; then
+				signed="yes"
+			fi
+			printf "  %-30s %8s  signed: %-3s  updated: %s\n" "$repo" "$size" "$signed" "$updated"
+		else
+			printf "  %-30s (not deployed)\n" "$repo"
+		fi
+	done < "${CFG_DIR}/repos.txt"
+
+	echo ""
+	if [[ -f "${OUTPUT_DIR}/packages.txt" ]]; then
+		local pkg_count
+		pkg_count=$(grep -cv '^#' "${OUTPUT_DIR}/packages.txt" 2>/dev/null || echo 0)
+		echo "Package index: $pkg_count packages"
+	else
+		echo "Package index: not generated"
+	fi
 }
 
 # download and publish repos
@@ -112,10 +213,14 @@ deploy (){
 	repo_success=0
 	repo_skip=0
 
-	repo_deploy=false
-
 	# Process each repo
 	while IFS= read -r repo; do
+		# Skip empty lines and comments
+		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+
+		# Reset deploy flag for each repo
+		repo_deploy=false
+
 		url="${CLONE_PREFIX}/${repo}${CLONE_SUFFIX}"
 		repo_dir="${REPOS_DIR}/${repo}"
 		release="${OUTPUT_DIR}/${repo}"
@@ -123,18 +228,13 @@ deploy (){
 		((repo_count++))
 
 		if [[ -d "${repo_dir}" ]]; then
-			cd "${repo_dir}"
 			ut "Checking if remote repo has changed since last deploy"
-			if git remote update > /dev/null; then
-				repo_local_revision="$(git rev-parse HEAD)"
-				repo_remote_revision="$(git rev-parse @{u})"
-				if [[ "$repo_local_revision" != "$repo_remote_revision" ]]; then
+			if git -C "${repo_dir}" remote update > /dev/null 2>&1; then
+				repo_local_revision="$(git -C "${repo_dir}" rev-parse HEAD)"
+				repo_remote_revision="$(git -C "${repo_dir}" rev-parse @{u} 2>/dev/null)" || repo_remote_revision=""
+				if [[ -n "$repo_remote_revision" && "$repo_local_revision" != "$repo_remote_revision" ]]; then
 					ut "Remote has changed, updating local repo"
-			
-					# Pull repo
-					
-					repo_git_status="$?"
-					if git pull; then
+					if git -C "${repo_dir}" pull; then
 						repo_deploy=true
 					else
 						ut "Git pull failed for '$repo'"
@@ -146,7 +246,6 @@ deploy (){
 			else
 				ut "Git remote update failed for '$repo'"
 			fi
-			cd ..
 		else
 			ut "Cloning new repo"
 			if git -C "${REPOS_DIR}" clone "$url"; then
@@ -159,26 +258,47 @@ deploy (){
 		# Publish repo if applicable
 		if $repo_deploy; then
 			ut "Publishing release.."
-			cd "${repo_dir}"
-			git archive --format=tar HEAD | gzip > "${release}.tar.gz"
+			# Use subshell for archive creation to handle cd safely
+			if (
+				set -o pipefail
+				cd "${repo_dir}" || exit 1
+				git archive --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
+			); then
+				mv "${release}.tar.gz.tmp" "${release}.tar.gz"
+			else
+				ut "Error: git archive failed for '$repo'"
+				rm -f "${release}.tar.gz.tmp"
+				ut "#####  Finished '$repo'  #####"
+				continue
+			fi
+
 			if "$SIGNING"; then
 				ut "Signing release.."
 				sign "$SIGNING_PRIVATE_KEY" "${release}.signature" "${release}.tar.gz"
-				utn "Checking signature.. "
-				if ut $(sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz"); then
+				ut "Checking signature.."
+				if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
+					ut "Signature verified."
 					((repo_success++))
 					date > "${release}.updated"
+				else
+					ut "Error: Signature verification failed for '$repo'"
+					rm -f "${release}.tar.gz" "${release}.signature"
 				fi
 			elif [[ -f "${release}.tar.gz" ]]; then
 				((repo_success++))
 				date > "${release}.updated"
 			fi
-			cd ..
 		fi
 		ut "#####  Finished '$repo'  #####"
 	done < "${CFG_DIR}/repos.txt"
 }
 
+
+# Handle --status flag
+if "$SHOW_STATUS"; then
+	show_status
+	exit 0
+fi
 
 # main loop
 while true; do
@@ -187,14 +307,22 @@ while true; do
 	ut "$(date): Start"
 	ut "Processing repos"
 	deploy
+	generate_index
 	multilog "Rollerblades - $(date)"
 	multilog "Repos processed: ${repo_count} ($repo_success deployed, $repo_skip skipped, $((repo_count - repo_success - repo_skip)) failed)"
 	weblog_html
-	if ! [[ -z "${SLEEP_TIME}" ]]; then
+
+	# Exit after one run if --once flag was provided
+	if "$ONESHOT"; then
+		ut "One-shot mode: exiting."
+		exit 0
+	fi
+
+	if [[ -n "${SLEEP_TIME}" ]]; then
 		ut "Sleeping (${SLEEP_TIME})"
 		sleep "${SLEEP_TIME}"
 	else
-		exit
+		exit 0
 	fi
 	ut '# # # # # # # #'
 done
