@@ -1,0 +1,31 @@
+services:
+  rollerblades:
+    build: .
+    image: rollerblades:latest
+    container_name: rollerblades
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      # Required: repos.txt file listing packages to distribute
+      - ./config/repos.txt:/config/repos.txt:ro
+      # Persistent storage for cloned repos
+      - rb-repos:/repos
+      # Output directory (served by nginx)
+      - rb-output:/output
+      # Optional: signing keys (uncomment if using signing)
+      # - ./keys:/keys:ro
+    environment:
+      # How often to check for updates
+      RB_SLEEP_TIME: "5m"
+      # Git clone URL template
+      RB_CLONE_PREFIX: "https://github.com/your-org"
+      RB_CLONE_SUFFIX: ".git"
+      # Enable signing (requires keys mounted)
+      RB_SIGNING: "false"
+    # Optional: run once and exit (for testing or cron-triggered runs)
+    # command: ["--once"]
+
+volumes:
+  rb-repos:
+  rb-output:

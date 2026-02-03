@@ -1,0 +1,15 @@
+# Git
+.git
+.gitignore
+
+# Local config (don't bake into image)
+cfg/
+repos/
+
+# Documentation
+*.md
+LICENSE
+
+# Docker files (not needed in image context)
+docker-compose.yml
+.dockerignore

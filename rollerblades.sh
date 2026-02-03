@@ -37,27 +37,55 @@ if ! [[ -d "$SCRIPT_DIR" ]]; then
 	exit 1
 fi
 
-CFG_DIR="${SCRIPT_DIR}/cfg"
-REPOS_DIR="${SCRIPT_DIR}/repos"
+# Support both env vars and config file (env vars take precedence)
+# Paths can be overridden for container use
+CFG_DIR="${RB_CFG_DIR:-${SCRIPT_DIR}/cfg}"
+REPOS_DIR="${RB_REPOS_DIR:-${SCRIPT_DIR}/repos}"
 
+# Create repos dir if it doesn't exist
 if ! [[ -d "$REPOS_DIR" ]]; then
-	echo "Error: Could not locate repos directory"
-	exit 1
+	echo "Creating repos directory: $REPOS_DIR"
+	mkdir -p "$REPOS_DIR" || {
+		echo "Error: Could not create repos directory"
+		exit 1
+	}
 fi
 
-if ! [[ -f "$CFG_DIR/settings.txt" ]]; then
-	echo "Error: Settings file does not exist"
-	exit 1
+# Load config file if it exists (env vars will override)
+if [[ -f "$CFG_DIR/settings.txt" ]]; then
+	source "${CFG_DIR}/settings.txt"
 fi
 
-
+# Check for repos.txt
 if ! [[ -f "$CFG_DIR/repos.txt" ]]; then
-	echo "Error: Repos file does not exist"
+	echo "Error: Repos file does not exist at $CFG_DIR/repos.txt"
 	exit 1
 fi
 
-# load cfg
-source "${CFG_DIR}/settings.txt"
+# Apply environment variable overrides (these take precedence over config file)
+SLEEP_TIME="${RB_SLEEP_TIME:-${SLEEP_TIME:-5m}}"
+OUTPUT_DIR="${RB_OUTPUT_DIR:-${OUTPUT_DIR:-/output}}"
+CLONE_PREFIX="${RB_CLONE_PREFIX:-${CLONE_PREFIX:-https://github.com}}"
+CLONE_SUFFIX="${RB_CLONE_SUFFIX:-${CLONE_SUFFIX:-.git}}"
+SIGNING="${RB_SIGNING:-${SIGNING:-false}}"
+SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-}}"
+SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-}}"
+LOG_FILE="${RB_LOG_FILE:-${LOG_FILE:-}}"
+MOTD="${RB_MOTD:-${MOTD:-}}"
+
+# Ensure output directory exists
+if ! [[ -d "$OUTPUT_DIR" ]]; then
+	echo "Creating output directory: $OUTPUT_DIR"
+	mkdir -p "$OUTPUT_DIR" || {
+		echo "Error: Could not create output directory"
+		exit 1
+	}
+fi
+
+# Copy public key to output dir if signing is enabled
+if "$SIGNING" && [[ -f "$SIGNING_PUBLIC_KEY" ]]; then
+	cp "$SIGNING_PUBLIC_KEY" "${OUTPUT_DIR}/rollerblades.pub"
+fi
 
 # determine if internal logging will be enabled
 if [[ -z "$LOG_FILE" ]]; then
