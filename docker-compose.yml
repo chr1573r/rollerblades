@@ -21,8 +21,10 @@ services:
       # Git clone URL template
       RB_CLONE_PREFIX: "https://github.com/your-org"
       RB_CLONE_SUFFIX: ".git"
-      # Enable signing (requires keys mounted)
+      # Signing config (uncomment and mount keys to enable)
       RB_SIGNING: "false"
+      # RB_SIGNING_PRIVATE_KEY: "/keys/private.pem"
+      # RB_SIGNING_PUBLIC_KEY: "/keys/public.pem"
     # Optional: run once and exit (for testing or cron-triggered runs)
     # command: ["--once"]
 
