@@ -105,8 +105,8 @@ cp "$SIGNING_PUBLIC_KEY" "${OUTPUT_DIR}/rollerblades.pub"
 # Copy MOTD to output dir if it exists
 MOTD_FILE="${RB_MOTD:-${MOTD:-${CFG_DIR}/motd.txt}}"
 if [[ -f "$MOTD_FILE" ]]; then
-	# Limit MOTD size and strip control chars for safety
-	head -c 4096 "$MOTD_FILE" | tr -cd '[:print:]\n' > "${OUTPUT_DIR}/motd.txt"
+	# Limit MOTD size (server admin controls content)
+	head -c 4096 "$MOTD_FILE" > "${OUTPUT_DIR}/motd.txt"
 fi
 
 # HTML escape function for safe output
