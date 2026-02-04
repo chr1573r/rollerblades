@@ -15,8 +15,22 @@ echo "Configuration:"
 echo "  Sleep time:    ${RB_SLEEP_TIME}"
 echo "  Output dir:    ${RB_OUTPUT_DIR}"
 echo "  Clone prefix:  ${RB_CLONE_PREFIX}"
-echo "  Signing:       ${RB_SIGNING}"
 echo "  Repos file:    /config/repos.txt"
+
+# Show signing key info
+if [[ -f "${RB_SIGNING_PUBLIC_KEY}" ]]; then
+    fingerprint=$(openssl dgst -sha256 "${RB_SIGNING_PUBLIC_KEY}" 2>/dev/null | awk '{print $2}')
+    echo "  Signing key:   ${fingerprint:0:16}...${fingerprint: -16}"
+else
+    echo "  Signing key:   (not found!)"
+fi
+
+# Show MOTD status
+if [[ -f "/config/motd.txt" ]]; then
+    echo "  MOTD:          yes"
+else
+    echo "  MOTD:          (none)"
+fi
 echo ""
 
 # Start nginx in background
