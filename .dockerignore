@@ -10,6 +10,5 @@ repos/
 *.md
 LICENSE
 
-# Docker files (not needed in image context)
-docker-compose.yml
+# Docker build context exclusions
 .dockerignore
