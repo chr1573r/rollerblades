@@ -21,15 +21,15 @@ A lightweight distribution tool that monitors git repositories and publishes the
 ./rollerblades.sh --init
 
 # Add repos to monitor
-cp config/repos.txt.example config/repos.txt
-# Edit config/repos.txt - add your repo names
+cp cfg/repos.txt.example cfg/repos.txt
+# Edit cfg/repos.txt - add your repo names
 
 # Build and run
 docker build -t rollerblades .
 docker run -d --name rollerblades \
   --restart unless-stopped \
   -p 8080:80 \
-  -v $(pwd)/config:/config:ro \
+  -v $(pwd)/cfg:/config:ro \
   -v $(pwd)/keys:/keys:ro \
   -e RB_CLONE_PREFIX=https://github.com/your-org \
   rollerblades
@@ -42,14 +42,14 @@ docker run -d --name rollerblades \
 If you just want to get going, only `repos.txt` is required. Signing keys are generated automatically on first start:
 
 ```bash
-mkdir config
-echo "my-repo" > config/repos.txt
+mkdir cfg
+echo "my-repo" > cfg/repos.txt
 
 docker build -t rollerblades .
 docker run -d --name rollerblades \
   --restart unless-stopped \
   -p 8080:80 \
-  -v $(pwd)/config:/config:ro \
+  -v $(pwd)/cfg:/config:ro \
   -e RB_CLONE_PREFIX=https://github.com/your-org \
   rollerblades
 
@@ -61,8 +61,8 @@ docker logs rollerblades
 
 ```bash
 ./rollerblades.sh --init
-cp config/repos.txt.example config/repos.txt
-# Edit config/repos.txt, then:
+cp cfg/repos.txt.example cfg/repos.txt
+# Edit cfg/repos.txt, then:
 ./rollerblades.sh --once
 ```
 
@@ -102,8 +102,8 @@ Environment variables take precedence over config file values.
 | `OUTPUT_DIR` | `RB_OUTPUT_DIR` | `/output` | Where to publish archives |
 | `CLONE_PREFIX` | `RB_CLONE_PREFIX` | `https://github.com` | Git URL prefix |
 | `CLONE_SUFFIX` | `RB_CLONE_SUFFIX` | `.git` | Git URL suffix |
-| `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | `/keys/private.pem` | Path to private key |
-| `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | `/keys/public.pem` | Path to public key |
+| `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | `./keys/private.pem` | Path to private key |
+| `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | `./keys/public.pem` | Path to public key |
 | `LOG_FILE` | `RB_LOG_FILE` | - | Optional internal log file |
 | `MOTD` | `RB_MOTD` | `cfg/motd.txt` | Optional message of the day file |
 
@@ -141,7 +141,7 @@ The public key is automatically copied to the output directory as `rollerblades.
 You can display a server message to clients by creating an MOTD file:
 
 ```bash
-echo "Welcome to my package server!" > config/motd.txt
+echo "Welcome to my package server!" > cfg/motd.txt
 ```
 
 The MOTD is:
