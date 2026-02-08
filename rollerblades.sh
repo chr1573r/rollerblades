@@ -1,11 +1,116 @@
 #!/usr/bin/env bash
 
+# Initialize directory structure and generate signing keys
+# shellcheck disable=SC2120
+run_init() {
+  local init_dir="${1:-.}"
+
+  echo '|)  || _   | |   | _  _'
+  echo '|\()||(/_|`|)|(|(|(/__\'
+  echo ""
+  echo "Initializing rollerblades directory structure..."
+  echo ""
+
+  # Create directories
+  for dir in config keys; do
+    if [[ -d "$init_dir/$dir" ]]; then
+      echo "  [exists]  $init_dir/$dir/"
+    else
+      mkdir -p "$init_dir/$dir"
+      echo "  [created] $init_dir/$dir/"
+    fi
+  done
+
+  # Create repos.txt.example if no repos.txt exists
+  if [[ -f "$init_dir/config/repos.txt" ]]; then
+    echo "  [exists]  $init_dir/config/repos.txt"
+  else
+    cat > "$init_dir/config/repos.txt.example" << 'EXAMPLE'
+# Add repository names here, one per line.
+# These are repo names appended to CLONE_PREFIX (not full URLs).
+#
+# Example: if CLONE_PREFIX is https://github.com/your-org
+# and you add "my-tool", rollerblades will clone:
+#   https://github.com/your-org/my-tool.git
+#
+# my-tool
+# another-package
+EXAMPLE
+    echo "  [created] $init_dir/config/repos.txt.example"
+  fi
+
+  # Generate key pair if neither key exists
+  if [[ -f "$init_dir/keys/private.pem" && -f "$init_dir/keys/public.pem" ]]; then
+    echo ""
+    echo "Signing keys already exist."
+    local fp
+    fp=$(openssl dgst -sha256 "$init_dir/keys/public.pem" 2>/dev/null | awk '{print $2}')
+    echo "  Key fingerprint (SHA256): $fp"
+  elif [[ -f "$init_dir/keys/private.pem" || -f "$init_dir/keys/public.pem" ]]; then
+    echo ""
+    echo "WARNING: Partial key pair found in $init_dir/keys/" >&2
+    echo "  Both private.pem and public.pem must exist." >&2
+    echo "  Remove the existing file and re-run --init to generate a fresh pair," >&2
+    echo "  or manually provide both files." >&2
+  else
+    echo ""
+    echo "Generating 4096-bit RSA signing key pair..."
+    openssl genrsa -out "$init_dir/keys/private.pem" 4096 2>/dev/null
+    openssl rsa -in "$init_dir/keys/private.pem" -pubout -out "$init_dir/keys/public.pem" 2>/dev/null
+    chmod 600 "$init_dir/keys/private.pem"
+    chmod 644 "$init_dir/keys/public.pem"
+
+    local fp
+    fp=$(openssl dgst -sha256 "$init_dir/keys/public.pem" 2>/dev/null | awk '{print $2}')
+    echo ""
+    echo "=========================================="
+    echo "  KEY FINGERPRINT (SHA256):"
+    echo "  $fp"
+    echo "=========================================="
+    echo ""
+    echo "  Share this fingerprint with your sk8 users"
+    echo "  so they can verify the right server."
+  fi
+
+  echo ""
+  echo "Next steps:"
+  if [[ ! -f "$init_dir/config/repos.txt" ]]; then
+    echo "  1. Create config/repos.txt from the example:"
+    echo "     cp config/repos.txt.example config/repos.txt"
+    echo ""
+    echo "  2. Edit config/repos.txt and add your repo names"
+    echo ""
+    echo "  3. Run with Docker:"
+  else
+    echo "  1. Run with Docker:"
+  fi
+  echo '     docker build -t rollerblades .'
+  echo '     docker run -d --name rollerblades \'
+  echo '       --restart unless-stopped \'
+  echo '       -p 8080:80 \'
+  echo '       -v $(pwd)/config:/config:ro \'
+  echo '       -v $(pwd)/keys:/keys:ro \'
+  echo '       -e RB_CLONE_PREFIX=https://github.com/your-org \'
+  echo '       rollerblades'
+  echo ""
+  echo "  Or run standalone:"
+  echo "     ./rollerblades.sh --once"
+  echo ""
+  echo "  Connect sk8 clients:"
+  echo "     SK8_RB_URL=http://your-server:8080 sk8"
+  echo ""
+}
+
 # Parse command line arguments
 ONESHOT=false
 SHOW_STATUS=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --init)
+      run_init
+      exit 0
+      ;;
     --once|-1)
       ONESHOT=true
       shift
@@ -18,13 +123,14 @@ while [[ $# -gt 0 ]]; do
       echo "Usage: rollerblades.sh [OPTIONS]"
       echo ""
       echo "Options:"
+      echo "  --init        Initialize directory structure and generate signing keys"
       echo "  --once, -1    Run once and exit (no loop)"
       echo "  --status, -s  Show deployment status and exit"
       echo "  --help, -h    Show this help message"
       exit 0
       ;;
     *)
-      echo "Unknown option: $1"
+      echo "Unknown option: $1" >&2
       exit 1
       ;;
   esac
@@ -33,7 +139,7 @@ done
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if ! [[ -d "$SCRIPT_DIR" ]]; then
-	echo "Error: Could not locate rollerblades install directory"
+	echo "Error: Could not locate rollerblades install directory" >&2
 	exit 1
 fi
 
@@ -46,7 +152,7 @@ REPOS_DIR="${RB_REPOS_DIR:-${SCRIPT_DIR}/repos}"
 if ! [[ -d "$REPOS_DIR" ]]; then
 	echo "Creating repos directory: $REPOS_DIR"
 	mkdir -p "$REPOS_DIR" || {
-		echo "Error: Could not create repos directory"
+		echo "Error: Could not create repos directory" >&2
 		exit 1
 	}
 fi
@@ -58,7 +164,7 @@ fi
 
 # Check for repos.txt
 if ! [[ -f "$CFG_DIR/repos.txt" ]]; then
-	echo "Error: Repos file does not exist at $CFG_DIR/repos.txt"
+	echo "Error: Repos file does not exist at $CFG_DIR/repos.txt" >&2
 	exit 1
 fi
 
@@ -74,19 +180,19 @@ MOTD="${RB_MOTD:-${MOTD:-}}"
 
 # Validate signing keys (signing is mandatory)
 if [[ -z "$SIGNING_PRIVATE_KEY" ]] || [[ -z "$SIGNING_PUBLIC_KEY" ]]; then
-	echo "Error: Signing keys are required."
-	echo "Set SIGNING_PRIVATE_KEY and SIGNING_PUBLIC_KEY in settings.txt"
-	echo "or via RB_SIGNING_PRIVATE_KEY and RB_SIGNING_PUBLIC_KEY env vars."
+	echo "Error: Signing keys are required." >&2
+	echo "Set SIGNING_PRIVATE_KEY and SIGNING_PUBLIC_KEY in settings.txt" >&2
+	echo "or via RB_SIGNING_PRIVATE_KEY and RB_SIGNING_PUBLIC_KEY env vars." >&2
 	exit 1
 fi
 
 if [[ ! -f "$SIGNING_PRIVATE_KEY" ]]; then
-	echo "Error: Private key not found: $SIGNING_PRIVATE_KEY"
+	echo "Error: Private key not found: $SIGNING_PRIVATE_KEY" >&2
 	exit 1
 fi
 
 if [[ ! -f "$SIGNING_PUBLIC_KEY" ]]; then
-	echo "Error: Public key not found: $SIGNING_PUBLIC_KEY"
+	echo "Error: Public key not found: $SIGNING_PUBLIC_KEY" >&2
 	exit 1
 fi
 
@@ -94,7 +200,7 @@ fi
 if ! [[ -d "$OUTPUT_DIR" ]]; then
 	echo "Creating output directory: $OUTPUT_DIR"
 	mkdir -p "$OUTPUT_DIR" || {
-		echo "Error: Could not create output directory"
+		echo "Error: Could not create output directory" >&2
 		exit 1
 	}
 fi
@@ -102,7 +208,7 @@ fi
 # Copy public key to output dir for clients
 cp "$SIGNING_PUBLIC_KEY" "${OUTPUT_DIR}/rollerblades.pub"
 
-# Copy MOTD to output dir if it exists
+# Resolve MOTD file path and copy to output dir if it exists
 MOTD_FILE="${RB_MOTD:-${MOTD:-${CFG_DIR}/motd.txt}}"
 if [[ -f "$MOTD_FILE" ]]; then
 	# Limit MOTD size (server admin controls content)
@@ -171,9 +277,9 @@ logn(){
 }
 
 #init published log file. Uses motd file as template if specified
-weblog_init(){ 
-	if [[ -f "$MOTD" ]]; then
-		cp "$MOTD" "${OUTPUT_DIR}/rollerblades.log"
+weblog_init(){
+	if [[ -f "$MOTD_FILE" ]]; then
+		cp "$MOTD_FILE" "${OUTPUT_DIR}/rollerblades.log"
 	else
 		echo -n > "${OUTPUT_DIR}/rollerblades.log"
 	fi
@@ -295,7 +401,7 @@ deploy (){
 			ut "Checking if remote repo has changed since last deploy"
 			if git -C "${repo_dir}" remote update > /dev/null 2>&1; then
 				repo_local_revision="$(git -C "${repo_dir}" rev-parse HEAD)"
-				repo_remote_revision="$(git -C "${repo_dir}" rev-parse @{u} 2>/dev/null)" || repo_remote_revision=""
+				repo_remote_revision="$(git -C "${repo_dir}" rev-parse '@{u}' 2>/dev/null)" || repo_remote_revision=""
 				if [[ -n "$repo_remote_revision" && "$repo_local_revision" != "$repo_remote_revision" ]]; then
 					ut "Remote has changed, updating local repo"
 					if git -C "${repo_dir}" pull; then
