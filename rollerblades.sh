@@ -12,7 +12,7 @@ run_init() {
   echo ""
 
   # Create directories
-  for dir in config keys; do
+  for dir in cfg keys; do
     if [[ -d "$init_dir/$dir" ]]; then
       echo "  [exists]  $init_dir/$dir/"
     else
@@ -22,10 +22,10 @@ run_init() {
   done
 
   # Create repos.txt.example if no repos.txt exists
-  if [[ -f "$init_dir/config/repos.txt" ]]; then
-    echo "  [exists]  $init_dir/config/repos.txt"
+  if [[ -f "$init_dir/cfg/repos.txt" ]]; then
+    echo "  [exists]  $init_dir/cfg/repos.txt"
   else
-    cat > "$init_dir/config/repos.txt.example" << 'EXAMPLE'
+    cat > "$init_dir/cfg/repos.txt.example" << 'EXAMPLE'
 # Add repository names here, one per line.
 # These are repo names appended to CLONE_PREFIX (not full URLs).
 #
@@ -36,7 +36,7 @@ run_init() {
 # my-tool
 # another-package
 EXAMPLE
-    echo "  [created] $init_dir/config/repos.txt.example"
+    echo "  [created] $init_dir/cfg/repos.txt.example"
   fi
 
   # Generate key pair if neither key exists
@@ -74,11 +74,11 @@ EXAMPLE
 
   echo ""
   echo "Next steps:"
-  if [[ ! -f "$init_dir/config/repos.txt" ]]; then
-    echo "  1. Create config/repos.txt from the example:"
-    echo "     cp config/repos.txt.example config/repos.txt"
+  if [[ ! -f "$init_dir/cfg/repos.txt" ]]; then
+    echo "  1. Create cfg/repos.txt from the example:"
+    echo "     cp cfg/repos.txt.example cfg/repos.txt"
     echo ""
-    echo "  2. Edit config/repos.txt and add your repo names"
+    echo "  2. Edit cfg/repos.txt and add your repo names"
     echo ""
     echo "  3. Run with Docker:"
   else
@@ -88,7 +88,7 @@ EXAMPLE
   echo '     docker run -d --name rollerblades \'
   echo '       --restart unless-stopped \'
   echo '       -p 8080:80 \'
-  echo '       -v $(pwd)/config:/config:ro \'
+  echo '       -v $(pwd)/cfg:/config:ro \'
   echo '       -v $(pwd)/keys:/keys:ro \'
   echo '       -e RB_CLONE_PREFIX=https://github.com/your-org \'
   echo '       rollerblades'
@@ -173,8 +173,8 @@ SLEEP_TIME="${RB_SLEEP_TIME:-${SLEEP_TIME:-5m}}"
 OUTPUT_DIR="${RB_OUTPUT_DIR:-${OUTPUT_DIR:-/output}}"
 CLONE_PREFIX="${RB_CLONE_PREFIX:-${CLONE_PREFIX:-https://github.com}}"
 CLONE_SUFFIX="${RB_CLONE_SUFFIX:-${CLONE_SUFFIX:-.git}}"
-SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-}}"
-SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-}}"
+SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-${SCRIPT_DIR}/keys/private.pem}}"
+SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-${SCRIPT_DIR}/keys/public.pem}}"
 LOG_FILE="${RB_LOG_FILE:-${LOG_FILE:-}}"
 MOTD="${RB_MOTD:-${MOTD:-}}"
 
@@ -186,13 +186,11 @@ if [[ -z "$SIGNING_PRIVATE_KEY" ]] || [[ -z "$SIGNING_PUBLIC_KEY" ]]; then
 	exit 1
 fi
 
-if [[ ! -f "$SIGNING_PRIVATE_KEY" ]]; then
-	echo "Error: Private key not found: $SIGNING_PRIVATE_KEY" >&2
-	exit 1
-fi
-
-if [[ ! -f "$SIGNING_PUBLIC_KEY" ]]; then
-	echo "Error: Public key not found: $SIGNING_PUBLIC_KEY" >&2
+if [[ ! -f "$SIGNING_PRIVATE_KEY" ]] || [[ ! -f "$SIGNING_PUBLIC_KEY" ]]; then
+	echo "Error: Signing key(s) not found." >&2
+	echo "  Expected: $SIGNING_PRIVATE_KEY" >&2
+	echo "            $SIGNING_PUBLIC_KEY" >&2
+	echo "  Run './rollerblades.sh --init' to generate keys." >&2
 	exit 1
 fi
 
