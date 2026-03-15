@@ -29,7 +29,7 @@ docker build -t rollerblades .
 docker run -d --name rollerblades \
   --restart unless-stopped \
   -p 8080:80 \
-  -v $(pwd)/cfg:/config:ro \
+  -v $(pwd)/cfg:/cfg:ro \
   -v $(pwd)/keys:/keys:ro \
   -e RB_CLONE_PREFIX=https://github.com/your-org \
   rollerblades
@@ -49,7 +49,7 @@ docker build -t rollerblades .
 docker run -d --name rollerblades \
   --restart unless-stopped \
   -p 8080:80 \
-  -v $(pwd)/cfg:/config:ro \
+  -v $(pwd)/cfg:/cfg:ro \
   -e RB_CLONE_PREFIX=https://github.com/your-org \
   rollerblades
 
@@ -65,6 +65,49 @@ cp cfg/repos.txt.example cfg/repos.txt
 # Edit cfg/repos.txt, then:
 ./rollerblades.sh --once
 ```
+
+## Cloning Private Repositories
+
+By default rollerblades clones over HTTPS. To clone private repositories, use SSH:
+
+```bash
+RB_CLONE_PREFIX=git@github.com:your-org
+```
+
+### Standalone
+
+When running directly on a machine, rollerblades inherits the SSH keys of the user it runs as. As long as the SSH key is authorized on GitHub (or your git host), private repos will be cloned automatically.
+
+### Docker
+
+Mount a directory containing your SSH keys into the container at `/root/.ssh`:
+
+```bash
+docker run -d --name rollerblades \
+  --restart unless-stopped \
+  -p 8080:80 \
+  -v $(pwd)/cfg:/cfg:ro \
+  -v $(pwd)/keys:/keys:ro \
+  -v $(pwd)/ssh:/root/.ssh:ro \
+  -e RB_CLONE_PREFIX=git@github.com:your-org \
+  rollerblades
+```
+
+The `ssh/` directory should contain your SSH private key and a `known_hosts` file. The entrypoint will set correct permissions automatically.
+
+#### Setting up the SSH directory
+
+```bash
+mkdir ssh
+
+# Copy your private key
+cp ~/.ssh/id_ed25519 ssh/
+
+# Add GitHub to known_hosts (run once on the host)
+ssh-keyscan github.com >> ssh/known_hosts
+```
+
+> **Note:** Including `github.com` in `known_hosts` is required for SSH cloning from GitHub to work without interactive host verification. The `ssh-keyscan` command fetches GitHub's public host key and saves it — verify the fingerprint against [GitHub's published SSH key fingerprints](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints) if security is a concern.
 
 ## Connecting Clients
 
@@ -153,8 +196,9 @@ The MOTD is:
 
 | Path | Description |
 |------|-------------|
-| `/config` | Config directory containing repos.txt (required, mount read-only) |
+| `/cfg` | Config directory containing repos.txt (required, mount read-only) |
 | `/keys` | Signing keys (auto-generated if not mounted) |
+| `/root/.ssh` | SSH keys for cloning private repos (optional, mount read-only) |
 | `/repos` | Git clones (persistent, managed by Docker) |
 | `/output` | Published packages (served by nginx) |
 

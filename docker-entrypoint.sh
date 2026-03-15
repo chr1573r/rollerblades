@@ -4,10 +4,10 @@ set -e
 echo "Starting rollerblades container..."
 
 # Validate required config
-if [[ ! -f "/config/repos.txt" ]]; then
-    echo "Error: /config/repos.txt not found" >&2
-    echo "Mount a config directory with repos.txt to /config:" >&2
-    echo "  docker run -v ./config:/config:ro ..." >&2
+if [[ ! -f "/cfg/repos.txt" ]]; then
+    echo "Error: /cfg/repos.txt not found" >&2
+    echo "Mount a config directory with repos.txt to /cfg:" >&2
+    echo "  docker run -v ./cfg:/cfg:ro ..." >&2
     exit 1
 fi
 
@@ -35,12 +35,23 @@ if [[ ! -f "${RB_SIGNING_PRIVATE_KEY}" ]] || [[ ! -f "${RB_SIGNING_PUBLIC_KEY}" 
     echo ""
 fi
 
+# Set up SSH if a key directory is mounted
+if [[ -d "/root/.ssh" ]]; then
+    chmod 700 /root/.ssh
+    # Fix permissions on any key files
+    for f in /root/.ssh/id_rsa /root/.ssh/id_ed25519 /root/.ssh/id_ecdsa; do
+        [[ -f "$f" ]] && chmod 600 "$f"
+    done
+    [[ -f /root/.ssh/known_hosts ]] && chmod 644 /root/.ssh/known_hosts
+    echo "SSH directory mounted, key permissions set."
+fi
+
 # Show configuration
 echo "Configuration:"
 echo "  Sleep time:    ${RB_SLEEP_TIME}"
 echo "  Output dir:    ${RB_OUTPUT_DIR}"
 echo "  Clone prefix:  ${RB_CLONE_PREFIX}"
-echo "  Repos file:    /config/repos.txt"
+echo "  Repos file:    /cfg/repos.txt"
 
 # Show signing key info
 if [[ -f "${RB_SIGNING_PUBLIC_KEY}" ]]; then
@@ -51,7 +62,7 @@ else
 fi
 
 # Show MOTD status
-if [[ -f "/config/motd.txt" ]]; then
+if [[ -f "/cfg/motd.txt" ]]; then
     echo "  MOTD:          yes"
 else
     echo "  MOTD:          (none)"

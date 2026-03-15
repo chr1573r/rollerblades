@@ -88,7 +88,7 @@ EXAMPLE
   echo '     docker run -d --name rollerblades \'
   echo '       --restart unless-stopped \'
   echo '       -p 8080:80 \'
-  echo '       -v $(pwd)/cfg:/config:ro \'
+  echo '       -v $(pwd)/cfg:/cfg:ro \'
   echo '       -v $(pwd)/keys:/keys:ro \'
   echo '       -e RB_CLONE_PREFIX=https://github.com/your-org \'
   echo '       rollerblades'
@@ -274,14 +274,9 @@ logn(){
 	fi
 }
 
-#init published log file. Uses motd file as template if specified
+#init published log file
 weblog_init(){
-	if [[ -f "$MOTD_FILE" ]]; then
-		cp "$MOTD_FILE" "${OUTPUT_DIR}/rollerblades.log"
-	else
-		echo -n > "${OUTPUT_DIR}/rollerblades.log"
-	fi
-
+	echo -n > "${OUTPUT_DIR}/rollerblades.log"
 }
 
 #log to published log

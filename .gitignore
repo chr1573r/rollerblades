@@ -1,6 +1,7 @@
-# Config directories
-cfg/
-config/
+# Config directory (ignore actual configs, track examples)
+cfg/repos.txt
+cfg/settings.txt
+cfg/motd.txt
 
 # Cloned repos
 repos/
@@ -18,3 +19,6 @@ rollerblades.log
 
 # Development
 dev/
+
+# macOS
+.DS_Store
