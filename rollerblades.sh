@@ -213,10 +213,6 @@ if [[ -f "$MOTD_FILE" ]]; then
 	head -c 4096 "$MOTD_FILE" > "${OUTPUT_DIR}/motd.txt"
 fi
 
-# HTML escape function for safe output
-html_escape() {
-	sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/"/\&quot;/g; s/'"'"'/\&#39;/g'
-}
 
 # determine if internal logging will be enabled
 if [[ -z "$LOG_FILE" ]]; then
@@ -284,20 +280,65 @@ weblog(){
 	echo "$*" >> "${OUTPUT_DIR}/rollerblades.log"
 }
 
-#copy published log to index.html and wrap with pre tags
-weblog_html(){
-	{
-		echo '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Rollerblades</title></head><body>'
-		# Include MOTD if it exists (HTML escaped)
-		if [[ -f "${OUTPUT_DIR}/motd.txt" ]]; then
-			echo '<div style="background:#f0f0f0;padding:10px;margin-bottom:10px;border-radius:5px;">'
-			html_escape < "${OUTPUT_DIR}/motd.txt"
-			echo '</div>'
+# Generate status.json for the web frontend
+generate_status_json() {
+	local json_tmp="${OUTPUT_DIR}/status.json.tmp"
+	local packages_json=""
+	local first=true
+	local has_motd="false"
+
+	[[ -f "${OUTPUT_DIR}/motd.txt" ]] && has_motd="true"
+
+	while IFS= read -r repo; do
+		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+
+		local release="${OUTPUT_DIR}/${repo}"
+		local deployed="false"
+		local size="null"
+		local updated="null"
+		local signed="false"
+
+		if [[ -f "${release}.tar.gz" ]]; then
+			deployed="true"
+			local sz
+			sz=$(du -h "${release}.tar.gz" 2>/dev/null | cut -f1 | tr -d '[:space:]')
+			size="\"${sz}\""
+			if [[ -f "${release}.updated" ]]; then
+				local upd
+				upd=$(cat "${release}.updated")
+				upd="${upd//\\/\\\\}"
+				upd="${upd//\"/\\\"}"
+				updated="\"${upd}\""
+			fi
+			[[ -f "${release}.signature" ]] && signed="true"
 		fi
-		echo '<pre>'
-		html_escape < "${OUTPUT_DIR}/rollerblades.log"
-		echo '</pre></body></html>'
-	} > "${OUTPUT_DIR}/index.html"
+
+		$first || packages_json+=","
+		first=false
+		packages_json+="{\"name\":\"${repo}\",\"deployed\":${deployed},\"size\":${size},\"updated\":${updated},\"signed\":${signed}}"
+	done < "${CFG_DIR}/repos.txt"
+
+	local ts
+	ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u)
+
+	printf '{\n  "generated": "%s",\n  "has_motd": %s,\n  "stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "packages": [%s]\n}\n' \
+		"$ts" "$has_motd" "$repo_count" "$repo_success" "$repo_skip" "$((repo_count - repo_success - repo_skip))" "$packages_json" \
+		> "$json_tmp"
+
+	mv "$json_tmp" "${OUTPUT_DIR}/status.json"
+	ut "status.json updated"
+}
+
+# Copy frontend assets to output directory
+publish_assets() {
+	local assets_src="${SCRIPT_DIR}/assets"
+	if [[ -d "$assets_src" ]]; then
+		cp "${assets_src}/index.html" "${OUTPUT_DIR}/index.html"
+		cp "${assets_src}/style.css"  "${OUTPUT_DIR}/style.css"
+		cp "${assets_src}/app.js"     "${OUTPUT_DIR}/app.js"
+	else
+		ut "Warning: assets/ directory not found at ${assets_src}, skipping frontend publish"
+	fi
 }
 
 # Generate package index file
@@ -466,9 +507,10 @@ while true; do
 	ut "Processing repos"
 	deploy
 	generate_index
+	generate_status_json
+	publish_assets
 	multilog "Rollerblades - $(date)"
 	multilog "Repos processed: ${repo_count} ($repo_success deployed, $repo_skip skipped, $((repo_count - repo_success - repo_skip)) failed)"
-	weblog_html
 
 	# Exit after one run if --once flag was provided
 	if "$ONESHOT"; then

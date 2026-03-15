@@ -13,8 +13,9 @@ RUN apk add --no-cache \
 # Create directories
 RUN mkdir -p /app /cfg /repos /output /keys /run/nginx
 
-# Copy rollerblades script
+# Copy rollerblades script and frontend assets
 COPY rollerblades.sh /app/rollerblades.sh
+COPY assets/ /app/assets/
 RUN chmod +x /app/rollerblades.sh
 
 # Copy entrypoint
