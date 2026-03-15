@@ -4,13 +4,14 @@ RUN apk add --no-cache \
     bash \
     git \
     openssl \
+    openssh-client \
     gzip \
     nginx \
     curl \
     && rm -rf /var/cache/apk/*
 
 # Create directories
-RUN mkdir -p /app /config /repos /output /keys /run/nginx
+RUN mkdir -p /app /cfg /repos /output /keys /run/nginx
 
 # Copy rollerblades script
 COPY rollerblades.sh /app/rollerblades.sh
@@ -27,7 +28,7 @@ COPY nginx.conf /etc/nginx/http.d/default.conf
 # Signing keys at /keys/ are auto-generated if not mounted
 ENV RB_SLEEP_TIME=5m \
     RB_OUTPUT_DIR=/output \
-    RB_CFG_DIR=/config \
+    RB_CFG_DIR=/cfg \
     RB_REPOS_DIR=/repos \
     RB_CLONE_PREFIX=https://github.com \
     RB_CLONE_SUFFIX=.git \
@@ -35,7 +36,7 @@ ENV RB_SLEEP_TIME=5m \
     RB_SIGNING_PUBLIC_KEY=/keys/public.pem
 
 # Volumes
-VOLUME ["/config", "/repos", "/output", "/keys"]
+VOLUME ["/cfg", "/repos", "/output", "/keys"]
 
 # Expose nginx port
 EXPOSE 80

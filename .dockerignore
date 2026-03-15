@@ -3,7 +3,9 @@
 .gitignore
 
 # Local config (don't bake into image)
-cfg/
+cfg/repos.txt
+cfg/settings.txt
+cfg/motd.txt
 repos/
 
 # Documentation
