@@ -87,8 +87,6 @@ function renderPackages(packages) {
     return;
   }
 
-  const serverUrl = window.location.origin;
-
   for (const pkg of packages) {
     const card = document.createElement('div');
     card.className = 'pkg-card ' + (pkg.deployed ? 'deployed' : 'not-deployed');
@@ -119,7 +117,7 @@ function renderPackages(packages) {
       : '';
 
     // Install command (only for deployed packages)
-    const installCmd = `SK8_RB_URL=${serverUrl} sk8 install ${pkg.name}`;
+    const installCmd = `sk8 install ${pkg.name}`;
     const installBar = pkg.deployed
       ? `<div class="install-bar">
            <code class="install-cmd">${escapeHtml(installCmd)}</code>

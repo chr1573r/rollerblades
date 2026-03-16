@@ -335,12 +335,28 @@ generate_status_json() {
 # Copy frontend assets to output directory
 publish_assets() {
 	local assets_src="${SCRIPT_DIR}/assets"
-	if [[ -d "$assets_src" ]]; then
-		cp "${assets_src}/index.html" "${OUTPUT_DIR}/index.html"
-		cp "${assets_src}/style.css"  "${OUTPUT_DIR}/style.css"
-		cp "${assets_src}/app.js"     "${OUTPUT_DIR}/app.js"
-	else
+	if [[ ! -d "$assets_src" ]]; then
 		ut "Warning: assets/ directory not found at ${assets_src}, skipping frontend publish"
+		return
+	fi
+
+	cp "${assets_src}/index.html"      "${OUTPUT_DIR}/index.html"
+	cp "${assets_src}/style.css"       "${OUTPUT_DIR}/style.css"
+	cp "${assets_src}/app.js"          "${OUTPUT_DIR}/app.js"
+	cp "${assets_src}/favicon.svg"     "${OUTPUT_DIR}/favicon.svg"
+	cp "${assets_src}/site.webmanifest" "${OUTPUT_DIR}/site.webmanifest"
+
+	# Generate raster favicons once (rsvg-convert from librsvg)
+	if [[ ! -f "${OUTPUT_DIR}/apple-touch-icon.png" ]] && command -v rsvg-convert &>/dev/null; then
+		ut "Generating favicons..."
+		local fsvg="${OUTPUT_DIR}/favicon.svg"
+		rsvg-convert -w  16 -h  16 "$fsvg" -o "${OUTPUT_DIR}/favicon-16x16.png"
+		rsvg-convert -w  32 -h  32 "$fsvg" -o "${OUTPUT_DIR}/favicon-32x32.png"
+		rsvg-convert -w 180 -h 180 "$fsvg" -o "${OUTPUT_DIR}/apple-touch-icon.png"
+		rsvg-convert -w 192 -h 192 "$fsvg" -o "${OUTPUT_DIR}/android-chrome-192x192.png"
+		rsvg-convert -w 512 -h 512 "$fsvg" -o "${OUTPUT_DIR}/android-chrome-512x512.png"
+		# ICO: embed the 32x32 PNG (accepted by all modern browsers)
+		cp "${OUTPUT_DIR}/favicon-32x32.png" "${OUTPUT_DIR}/favicon.ico"
 	fi
 }
 

@@ -8,6 +8,7 @@ RUN apk add --no-cache \
     gzip \
     nginx \
     curl \
+    librsvg \
     && rm -rf /var/cache/apk/*
 
 # Create directories
