@@ -321,8 +321,11 @@ generate_status_json() {
 	local ts
 	ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u)
 
-	printf '{\n  "generated": "%s",\n  "has_motd": %s,\n  "stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "packages": [%s]\n}\n' \
-		"$ts" "$has_motd" "$repo_count" "$repo_success" "$repo_skip" "$((repo_count - repo_success - repo_skip))" "$packages_json" \
+	local cp_escaped="${CLONE_PREFIX//\\/\\\\}"
+	cp_escaped="${cp_escaped//\"/\\\"}"
+
+	printf '{\n  "generated": "%s",\n  "has_motd": %s,\n  "clone_prefix": "%s",\n  "stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "packages": [%s]\n}\n' \
+		"$ts" "$has_motd" "$cp_escaped" "$repo_count" "$repo_success" "$repo_skip" "$((repo_count - repo_success - repo_skip))" "$packages_json" \
 		> "$json_tmp"
 
 	mv "$json_tmp" "${OUTPUT_DIR}/status.json"

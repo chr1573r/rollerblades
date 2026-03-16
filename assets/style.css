@@ -70,40 +70,14 @@ header::before {
 
 .wheel {
   position: absolute;
-  border-radius: 50%;
-  border: 3px solid currentColor;
-  opacity: 0.13;
+  opacity: 0.20;
+  overflow: visible;
 }
 
-/* Hub dot */
-.wheel::after {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 28%;
-  height: 28%;
-  border-radius: 50%;
-  background: currentColor;
-  transform: translate(-50%, -50%);
-}
-
-/* Spokes */
-.wheel::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 100%;
-  height: 2px;
-  background: currentColor;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 0 transparent;
-  opacity: 0.5;
-}
-
-.wheel-1 { width: 110px; height: 110px; color: var(--purple); top: -28px; left:  6%; animation: spin 14s linear infinite; }
-.wheel-2 { width:  60px; height:  60px; color: var(--pink);   top:  22px; left: 14%; animation: spin  9s linear infinite reverse; }
-.wheel-3 { width:  80px; height:  80px; color: var(--cyan);   top:  -8px; right: 8%; animation: spin 11s linear infinite; }
-.wheel-4 { width:  48px; height:  48px; color: var(--pink);   top:  32px; right:17%; animation: spin  7s linear infinite reverse; }
+.wheel-1 { width: 130px; height: 130px; color: var(--purple); top: -30px; left:  5%; animation: spin 14s linear infinite; }
+.wheel-2 { width:  82px; height:  82px; color: var(--pink);   top:  18px; left: 14%; animation: spin  9s linear infinite reverse; }
+.wheel-3 { width: 108px; height: 108px; color: var(--cyan);   top: -12px; right: 7%; animation: spin 11s linear infinite; }
+.wheel-4 { width:  66px; height:  66px; color: var(--pink);   top:  30px; right:17%; animation: spin  7s linear infinite reverse; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -166,11 +140,14 @@ main {
 }
 
 .motd pre {
+  /* display: table shrinks to content width; margin: auto centers the block */
+  display: table;
+  margin: 0 auto;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.88rem;
   color: var(--text);
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  text-align: left;
 }
 
 /* ── Stats ──────────────────────────────────────────── */
@@ -279,13 +256,31 @@ main {
 .pkg-card.deployed::before    { background: var(--green); }
 .pkg-card.not-deployed::before { background: var(--text-dim); }
 
+.pkg-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
 .pkg-name {
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.97rem;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 0.8rem;
 }
+
+.pkg-repo-link {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 1rem;
+  line-height: 1.4;
+  transition: color var(--transition);
+}
+
+.pkg-repo-link:hover { color: var(--purple); }
 
 .pkg-badges {
   display: flex;
@@ -317,6 +312,49 @@ main {
   flex-direction: column;
   gap: 0.15rem;
 }
+
+/* ── Install command bar ────────────────────────────── */
+
+.install-bar {
+  display: flex;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-top: 0.85rem;
+}
+
+.install-cmd {
+  flex: 1;
+  padding: 0.5rem 0.7rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  user-select: all;
+}
+
+.copy-btn {
+  flex-shrink: 0;
+  padding: 0.5rem 0.8rem;
+  background: var(--surface-2);
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.copy-btn:hover  { background: var(--purple); color: #fff; }
+.copy-btn.copied { background: rgba(74,222,128,0.12); color: var(--green); }
 
 /* ── Log ────────────────────────────────────────────── */
 
@@ -365,6 +403,72 @@ main {
   scrollbar-width: thin;
   scrollbar-color: var(--text-dim) transparent;
 }
+
+/* ── Signing key ────────────────────────────────────── */
+
+.key-section details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 0.4rem 0;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.key-section details > summary::-webkit-details-marker { display: none; }
+
+.key-section details > summary::before {
+  content: '▶';
+  font-size: 0.6rem;
+  transition: transform var(--transition);
+}
+
+.key-section details[open] > summary::before { transform: rotate(90deg); }
+.key-section details > summary:hover { color: var(--text); }
+
+.key-content-wrap {
+  position: relative;
+  margin-top: 1rem;
+}
+
+.key-content {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1rem 1.25rem;
+  padding-right: 5rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.key-copy-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  padding: 0.3rem 0.75rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.key-copy-btn:hover  { background: var(--purple); color: #fff; border-color: transparent; }
+.key-copy-btn.copied { background: rgba(74,222,128,0.12); color: var(--green); border-color: transparent; }
 
 /* ── Footer ─────────────────────────────────────────── */
 
