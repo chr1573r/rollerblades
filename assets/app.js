@@ -66,7 +66,7 @@ async function copyToClipboard(text, btn) {
 
 // ── Rendering ──────────────────────────────────────────────────────────────
 
-function renderStats(stats) {
+function renderStats(stats, hiddenStats) {
   const s = stats || {};
   document.getElementById('val-total').textContent    = s.total    ?? '—';
   document.getElementById('val-deployed').textContent = s.deployed ?? '—';
@@ -75,6 +75,22 @@ function renderStats(stats) {
 
   const failCard = document.querySelector('.stat-card.danger');
   if (failCard) failCard.dataset.zero = (s.failed === 0) ? 'true' : 'false';
+
+  const h = hiddenStats || {};
+  const group = document.getElementById('unlisted-stats-group');
+  if (group) {
+    if (h.total > 0) {
+      group.classList.remove('hidden');
+      document.getElementById('val-hidden-total').textContent    = h.total    ?? '—';
+      document.getElementById('val-hidden-deployed').textContent = h.deployed ?? '—';
+      document.getElementById('val-hidden-skipped').textContent  = h.skipped  ?? '—';
+      document.getElementById('val-hidden-failed').textContent   = h.failed   ?? '—';
+      const hiddenFailCard = document.getElementById('unlisted-failed-card');
+      if (hiddenFailCard) hiddenFailCard.dataset.zero = (h.failed === 0) ? 'true' : 'false';
+    } else {
+      group.classList.add('hidden');
+    }
+  }
 }
 
 function renderPackages(packages) {
@@ -206,7 +222,7 @@ async function load() {
 
     clonePrefix = data.clone_prefix || '';
 
-    renderStats(data.stats);
+    renderStats(data.stats, data.hidden_stats);
     renderPackages(data.packages);
     renderFooter(data.generated || '');
     await renderMotd(!!data.has_motd);
