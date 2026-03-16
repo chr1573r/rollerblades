@@ -4,6 +4,7 @@ const REFRESH_INTERVAL = 60; // seconds between data refreshes
 
 let countdown = REFRESH_INTERVAL;
 let refreshTimer = null;
+let clonePrefix = '';
 
 // ── Fetch helpers ──────────────────────────────────────────────────────────
 
@@ -19,7 +20,7 @@ async function fetchText(url) {
   return res.text();
 }
 
-// ── Rendering ──────────────────────────────────────────────────────────────
+// ── Utilities ──────────────────────────────────────────────────────────────
 
 function escapeHtml(str) {
   return String(str)
@@ -29,15 +30,49 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function formatDate(raw) {
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) return escapeHtml(raw);
+  return d.toLocaleString(undefined, {
+    month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// Convert clone prefix to a browsable HTTPS URL.
+// Handles both HTTPS and SSH (git@host:org) formats.
+function repoUrl(prefix, name) {
+  if (!prefix || !name) return null;
+  const sshMatch = prefix.match(/^git@([^:]+):(.+)$/);
+  if (sshMatch) {
+    return 'https://' + sshMatch[1] + '/' + sshMatch[2] + '/' + name;
+  }
+  return prefix.replace(/\/$/, '') + '/' + name;
+}
+
+async function copyToClipboard(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = 'Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copy';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch {
+    // Clipboard API unavailable — silently ignore
+  }
+}
+
+// ── Rendering ──────────────────────────────────────────────────────────────
+
 function renderStats(stats) {
   const s = stats || {};
-
   document.getElementById('val-total').textContent    = s.total    ?? '—';
   document.getElementById('val-deployed').textContent = s.deployed ?? '—';
   document.getElementById('val-skipped').textContent  = s.skipped  ?? '—';
   document.getElementById('val-failed').textContent   = s.failed   ?? '—';
 
-  // Dim the failed card when nothing failed
   const failCard = document.querySelector('.stat-card.danger');
   if (failCard) failCard.dataset.zero = (s.failed === 0) ? 'true' : 'false';
 }
@@ -52,10 +87,19 @@ function renderPackages(packages) {
     return;
   }
 
+  const serverUrl = window.location.origin;
+
   for (const pkg of packages) {
     const card = document.createElement('div');
     card.className = 'pkg-card ' + (pkg.deployed ? 'deployed' : 'not-deployed');
 
+    // Repo link
+    const url = repoUrl(clonePrefix, pkg.name);
+    const repoLink = url
+      ? `<a class="pkg-repo-link" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="View source repository">↗</a>`
+      : '';
+
+    // Status + signed badges
     const statusBadge = pkg.deployed
       ? '<span class="badge badge-deployed">deployed</span>'
       : '<span class="badge badge-pending">pending</span>';
@@ -66,39 +110,41 @@ function renderPackages(packages) {
           : '<span class="badge badge-unsigned">unsigned</span>')
       : '';
 
-    const metaLines = [];
-    if (pkg.size)    metaLines.push(escapeHtml(pkg.size));
-    if (pkg.updated) metaLines.push('updated ' + formatDate(pkg.updated));
+    // Meta line (size + updated)
+    const metaParts = [];
+    if (pkg.size)    metaParts.push(escapeHtml(pkg.size));
+    if (pkg.updated) metaParts.push('updated ' + formatDate(pkg.updated));
+    const metaHtml = metaParts.length
+      ? `<div class="pkg-meta"><span>${metaParts.join('</span><span>')}</span></div>`
+      : '';
+
+    // Install command (only for deployed packages)
+    const installCmd = `SK8_RB_URL=${serverUrl} sk8 install ${pkg.name}`;
+    const installBar = pkg.deployed
+      ? `<div class="install-bar">
+           <code class="install-cmd">${escapeHtml(installCmd)}</code>
+           <button class="copy-btn" data-cmd="${escapeHtml(installCmd)}">Copy</button>
+         </div>`
+      : '';
 
     card.innerHTML =
-      '<div class="pkg-name">' + escapeHtml(pkg.name) + '</div>' +
-      '<div class="pkg-badges">' + statusBadge + signedBadge + '</div>' +
-      (metaLines.length
-        ? '<div class="pkg-meta"><span>' + metaLines.join('</span><span>') + '</span></div>'
-        : '');
+      `<div class="pkg-header">
+         <div class="pkg-name">${escapeHtml(pkg.name)}</div>
+         ${repoLink}
+       </div>
+       <div class="pkg-badges">${statusBadge}${signedBadge}</div>
+       ${metaHtml}
+       ${installBar}`;
 
     grid.appendChild(card);
   }
-}
-
-function formatDate(raw) {
-  // Try to parse whatever date string comes from the script
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return escapeHtml(raw);
-  return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
 }
 
 async function renderMotd(hasMOTD) {
   const section = document.getElementById('motd-section');
   if (!section) return;
 
-  if (!hasMOTD) {
-    section.classList.add('hidden');
-    return;
-  }
+  if (!hasMOTD) { section.classList.add('hidden'); return; }
 
   const text = await fetchText('motd.txt');
   if (text && text.trim()) {
@@ -111,19 +157,27 @@ async function renderMotd(hasMOTD) {
 
 async function renderLog() {
   const details = document.querySelector('.log-section details');
-  if (!details || !details.open) return; // only fetch when visible
+  if (!details || !details.open) return;
 
   const text = await fetchText('rollerblades.log');
   const el = document.getElementById('log-content');
   if (el) el.textContent = (text !== null && text.trim()) ? text : '(empty)';
 }
 
+async function renderSigningKey() {
+  const details = document.querySelector('.key-section details');
+  if (!details || !details.open) return;
+
+  const text = await fetchText('rollerblades.pub');
+  const el = document.getElementById('key-content');
+  if (el) el.textContent = (text !== null && text.trim()) ? text.trim() : '(not available)';
+}
+
 function renderFooter(generated) {
   const el = document.getElementById('generated');
   if (!el) return;
   try {
-    const d = new Date(generated);
-    el.textContent = 'Last run: ' + d.toLocaleString();
+    el.textContent = 'Last run: ' + new Date(generated).toLocaleString();
   } catch {
     el.textContent = 'Last run: ' + generated;
   }
@@ -134,10 +188,8 @@ function renderFooter(generated) {
 function updateCountdown() {
   const el = document.getElementById('refresh-info');
   if (el) {
-    el.innerHTML =
-      '<span class="refresh-dot"></span>refreshing in ' + countdown + 's';
+    el.innerHTML = '<span class="refresh-dot"></span>refreshing in ' + countdown + 's';
   }
-
   countdown--;
   if (countdown < 0) {
     countdown = REFRESH_INTERVAL;
@@ -149,34 +201,51 @@ function updateCountdown() {
 
 async function load() {
   const errorBanner = document.getElementById('error-banner');
-
   try {
     const data = await fetchJSON('status.json');
 
     if (errorBanner) errorBanner.classList.add('hidden');
+
+    clonePrefix = data.clone_prefix || '';
 
     renderStats(data.stats);
     renderPackages(data.packages);
     renderFooter(data.generated || '');
     await renderMotd(!!data.has_motd);
     await renderLog();
+    await renderSigningKey();
 
-  } catch (err) {
+  } catch {
     if (errorBanner) errorBanner.classList.remove('hidden');
   }
 }
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ── Event wiring ───────────────────────────────────────────────────────────
 
-// Fetch log when the section is expanded
-document.addEventListener('DOMContentLoaded', () => {
-  const details = document.querySelector('.log-section details');
-  if (details) {
-    details.addEventListener('toggle', () => {
-      if (details.open) renderLog();
-    });
-  }
+// Copy buttons on package cards (event delegation)
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.copy-btn');
+  if (btn) copyToClipboard(btn.dataset.cmd, btn);
 });
+
+// Signing key copy button
+const keyCopyBtn = document.getElementById('key-copy-btn');
+if (keyCopyBtn) {
+  keyCopyBtn.addEventListener('click', () => {
+    const text = document.getElementById('key-content')?.textContent;
+    if (text) copyToClipboard(text, keyCopyBtn);
+  });
+}
+
+// Lazy-load log when expanded
+document.querySelector('.log-section details')
+  ?.addEventListener('toggle', (e) => { if (e.target.open) renderLog(); });
+
+// Lazy-load signing key when expanded
+document.querySelector('.key-section details')
+  ?.addEventListener('toggle', (e) => { if (e.target.open) renderSigningKey(); });
+
+// ── Init ───────────────────────────────────────────────────────────────────
 
 load();
 
