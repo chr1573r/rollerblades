@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rollerblades</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header>
+    <div class="wheels" aria-hidden="true">
+      <div class="wheel wheel-1"></div>
+      <div class="wheel wheel-2"></div>
+      <div class="wheel wheel-3"></div>
+      <div class="wheel wheel-4"></div>
+    </div>
+    <div class="header-content">
+      <pre class="logo">|)  || _   | |   | _  _
+|\()||(/_|`|)|(|(|(/__\</pre>
+      <p class="tagline">package distribution server</p>
+    </div>
+  </header>
+
+  <main>
+
+    <section id="motd-section" class="motd hidden">
+      <div class="motd-label">Message of the Day</div>
+      <pre id="motd-content"></pre>
+    </section>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="stat-value" id="val-total">—</div>
+        <div class="stat-label">packages</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-value" id="val-deployed">—</div>
+        <div class="stat-label">deployed</div>
+      </div>
+      <div class="stat-card warning">
+        <div class="stat-value" id="val-skipped">—</div>
+        <div class="stat-label">skipped</div>
+      </div>
+      <div class="stat-card danger">
+        <div class="stat-value" id="val-failed">—</div>
+        <div class="stat-label">failed</div>
+      </div>
+    </section>
+
+    <section class="packages-section">
+      <div class="section-header">
+        <h2>Packages</h2>
+      </div>
+      <div id="packages" class="packages-grid"></div>
+    </section>
+
+    <section class="log-section">
+      <details>
+        <summary>Server log</summary>
+        <pre id="log-content" class="log-content">Loading…</pre>
+      </details>
+    </section>
+
+  </main>
+
+  <footer>
+    <div id="generated">—</div>
+    <div id="refresh-info"></div>
+  </footer>
+
+  <div id="error-banner" class="error-banner hidden">
+    Could not reach server — retrying…
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
