@@ -340,11 +340,13 @@ publish_assets() {
 		return
 	fi
 
-	cp "${assets_src}/index.html"      "${OUTPUT_DIR}/index.html"
-	cp "${assets_src}/style.css"       "${OUTPUT_DIR}/style.css"
-	cp "${assets_src}/app.js"          "${OUTPUT_DIR}/app.js"
-	cp "${assets_src}/favicon.svg"     "${OUTPUT_DIR}/favicon.svg"
-	cp "${assets_src}/site.webmanifest" "${OUTPUT_DIR}/site.webmanifest"
+	for asset in index.html style.css app.js favicon.svg site.webmanifest; do
+		if [[ -f "${assets_src}/${asset}" ]]; then
+			cp "${assets_src}/${asset}" "${OUTPUT_DIR}/${asset}"
+		else
+			ut "Warning: missing asset ${asset} — rebuild the image to include it"
+		fi
+	done
 
 	# Generate raster favicons once (rsvg-convert from librsvg)
 	if [[ ! -f "${OUTPUT_DIR}/apple-touch-icon.png" ]] && command -v rsvg-convert &>/dev/null; then

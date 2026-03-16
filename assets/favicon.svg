@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="wg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100" height="100" fill="#0c0a1a"/>
+
+  <!-- Tire ring -->
+  <circle cx="50" cy="50" r="43" fill="none" stroke="url(#wg)" stroke-width="11"/>
+
+  <!-- Hub background (dark, separates spokes from tire interior) -->
+  <circle cx="50" cy="50" r="36" fill="#0c0a1a"/>
+
+  <!-- 5 turbine spokes -->
+  <g fill="url(#wg)">
+    <path d="M48,37 C44,27 41,21 39,18 L53,17 C54,23 53,29 51,37Z" transform="rotate(0,50,50)"/>
+    <path d="M48,37 C44,27 41,21 39,18 L53,17 C54,23 53,29 51,37Z" transform="rotate(72,50,50)"/>
+    <path d="M48,37 C44,27 41,21 39,18 L53,17 C54,23 53,29 51,37Z" transform="rotate(144,50,50)"/>
+    <path d="M48,37 C44,27 41,21 39,18 L53,17 C54,23 53,29 51,37Z" transform="rotate(216,50,50)"/>
+    <path d="M48,37 C44,27 41,21 39,18 L53,17 C54,23 53,29 51,37Z" transform="rotate(288,50,50)"/>
+  </g>
+
+  <!-- Hub ring -->
+  <circle cx="50" cy="50" r="35" fill="none" stroke="url(#wg)" stroke-width="2"/>
+
+  <!-- Center hub -->
+  <circle cx="50" cy="50" r="12" fill="url(#wg)"/>
+
+  <!-- Bearing hole -->
+  <circle cx="50" cy="50" r="5" fill="#0c0a1a"/>
+</svg>
