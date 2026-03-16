@@ -38,6 +38,7 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 /* ── Header ─────────────────────────────────────────── */
@@ -127,6 +128,10 @@ main {
   border-left: 3px solid var(--purple);
   border-radius: var(--radius);
   padding: 1.25rem 1.5rem;
+  /* Scroll within the card — never let the card blow out the page width */
+  overflow-x: auto;
+  /* Center the inline-block pre */
+  text-align: center;
 }
 
 .motd.hidden { display: none; }
@@ -137,19 +142,20 @@ main {
   text-transform: uppercase;
   color: var(--purple);
   margin-bottom: 0.6rem;
+  text-align: left;
 }
 
 .motd pre {
-  /* display: table shrinks to content width; margin: auto centers the block */
-  display: table;
-  margin: 0 auto;
+  /* inline-block shrinks to content width and respects max-width,
+     unlike display:table which can ignore max-width in some browsers */
+  display: inline-block;
   max-width: 100%;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.88rem;
   color: var(--text);
   white-space: pre;
   text-align: left;
-  overflow-x: auto;
+  vertical-align: top;
 }
 
 /* ── Stats ──────────────────────────────────────────── */
