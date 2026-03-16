@@ -143,11 +143,13 @@ main {
   /* display: table shrinks to content width; margin: auto centers the block */
   display: table;
   margin: 0 auto;
+  max-width: 100%;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.88rem;
   color: var(--text);
   white-space: pre;
   text-align: left;
+  overflow-x: auto;
 }
 
 /* ── Stats ──────────────────────────────────────────── */
@@ -160,6 +162,13 @@ main {
 
 @media (max-width: 580px) {
   .stats { grid-template-columns: repeat(2, 1fr); }
+
+  /* Hide the inner wheels that land behind the centered logo on narrow screens */
+  .wheel-2, .wheel-4 { display: none; }
+
+  /* Push outer wheels to the corners, partially off-screen */
+  .wheel-1 { width: 80px; height: 80px; left: -18px; top: -18px; }
+  .wheel-3 { width: 70px; height: 70px; right: -16px; top: -14px; }
 }
 
 .stat-card {
