@@ -223,6 +223,19 @@ main {
   margin-top: 0.3rem;
 }
 
+/* ── Unlisted stats group ───────────────────────────── */
+
+.stats-group { display: flex; flex-direction: column; gap: 0.75rem; }
+.stats-group.hidden { display: none; }
+
+.stats-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
 /* ── Packages ───────────────────────────────────────── */
 
 .section-header {

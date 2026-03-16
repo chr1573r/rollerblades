@@ -1,8 +1,13 @@
 # Rollerblades package list
 # One repository name per line
 # Lines starting with # are comments
+#
+# Append " #hide" to unlist a package without stopping deployment.
+# Hidden packages are still built and signed — sk8 users who know the
+# name can install them, but they won't appear in the web UI or sk8 list.
 
 # Example packages:
 # my-tool
 # another-package
 # dotfiles
+# private-tool #hide

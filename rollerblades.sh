@@ -33,8 +33,13 @@ run_init() {
 # and you add "my-tool", rollerblades will clone:
 #   https://github.com/your-org/my-tool.git
 #
+# Append " #hide" to unlist a package without stopping deployment.
+# Hidden packages are still built and signed — sk8 users who know the
+# name can install them, but they won't appear in the web UI or sk8 list.
+#
 # my-tool
 # another-package
+# private-tool #hide
 EXAMPLE
     echo "  [created] $init_dir/cfg/repos.txt.example"
   fi
@@ -240,6 +245,19 @@ header(){
 	ut
 }
 
+# Parse a repos.txt line into $repo (name) and $repo_hidden (true/false).
+# Supports an optional " #hide" suffix to unlist a package without stopping deployment.
+parse_repo_line() {
+	local line="$1"
+	repo_hidden=false
+	if [[ "$line" =~ ^([^[:space:]#]+)[[:space:]]*#hide[[:space:]]*$ ]]; then
+		repo_hidden=true
+		repo="${BASH_REMATCH[1]}"
+	else
+		repo="$line"
+	fi
+}
+
 # create file signature with public key
 sign(){ # sign <key> <signature output> <file to sign>
 	openssl dgst -sha256 -sign "$1" -out "$2" "$3"
@@ -289,8 +307,10 @@ generate_status_json() {
 
 	[[ -f "${OUTPUT_DIR}/motd.txt" ]] && has_motd="true"
 
-	while IFS= read -r repo; do
-		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+	while IFS= read -r line; do
+		[[ -z "$line" || "$line" =~ ^# ]] && continue
+		parse_repo_line "$line"
+		$repo_hidden && continue
 
 		local release="${OUTPUT_DIR}/${repo}"
 		local deployed="false"
@@ -324,8 +344,11 @@ generate_status_json() {
 	local cp_escaped="${CLONE_PREFIX//\\/\\\\}"
 	cp_escaped="${cp_escaped//\"/\\\"}"
 
-	printf '{\n  "generated": "%s",\n  "has_motd": %s,\n  "clone_prefix": "%s",\n  "stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "packages": [%s]\n}\n' \
-		"$ts" "$has_motd" "$cp_escaped" "$repo_count" "$repo_success" "$repo_skip" "$((repo_count - repo_success - repo_skip))" "$packages_json" \
+	printf '{\n  "generated": "%s",\n  "has_motd": %s,\n  "clone_prefix": "%s",\n  "stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "hidden_stats": {"total": %d, "deployed": %d, "skipped": %d, "failed": %d},\n  "packages": [%s]\n}\n' \
+		"$ts" "$has_motd" "$cp_escaped" \
+		"$repo_count" "$repo_success" "$repo_skip" "$((repo_count - repo_success - repo_skip))" \
+		"$hidden_count" "$hidden_success" "$hidden_skip" "$((hidden_count - hidden_success - hidden_skip))" \
+		"$packages_json" \
 		> "$json_tmp"
 
 	mv "$json_tmp" "${OUTPUT_DIR}/status.json"
@@ -372,9 +395,12 @@ generate_index() {
 	echo "# Package index generated $(date)" > "$index_tmp"
 	echo "# Server: rollerblades" >> "$index_tmp"
 
-	while IFS= read -r repo; do
+	while IFS= read -r line; do
 		# Skip empty lines and comments
-		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+		[[ -z "$line" || "$line" =~ ^# ]] && continue
+		parse_repo_line "$line"
+		# Don't list hidden repos in the package index
+		$repo_hidden && continue
 		# Only list repos that have been successfully deployed
 		if [[ -f "${OUTPUT_DIR}/${repo}.tar.gz" ]]; then
 			echo "$repo" >> "$index_tmp"
@@ -400,9 +426,13 @@ show_status() {
 	fi
 
 	echo "Packages:"
-	while IFS= read -r repo; do
+	while IFS= read -r line; do
 		# Skip empty lines and comments
-		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+		[[ -z "$line" || "$line" =~ ^# ]] && continue
+		parse_repo_line "$line"
+
+		local hidden_marker=""
+		$repo_hidden && hidden_marker=" [hidden]"
 
 		local release="${OUTPUT_DIR}/${repo}"
 		if [[ -f "${release}.tar.gz" ]]; then
@@ -416,9 +446,9 @@ show_status() {
 			if [[ -f "${release}.signature" ]]; then
 				signed="yes"
 			fi
-			printf "  %-30s %8s  signed: %-3s  updated: %s\n" "$repo" "$size" "$signed" "$updated"
+			printf "  %-30s %8s  signed: %-3s  updated: %s%s\n" "$repo" "$size" "$signed" "$updated" "$hidden_marker"
 		else
-			printf "  %-30s (not deployed)\n" "$repo"
+			printf "  %-30s (not deployed)%s\n" "$repo" "$hidden_marker"
 		fi
 	done < "${CFG_DIR}/repos.txt"
 
@@ -437,11 +467,15 @@ deploy (){
 	repo_count=0
 	repo_success=0
 	repo_skip=0
+	hidden_count=0
+	hidden_success=0
+	hidden_skip=0
 
 	# Process each repo
-	while IFS= read -r repo; do
+	while IFS= read -r line; do
 		# Skip empty lines and comments
-		[[ -z "$repo" || "$repo" =~ ^# ]] && continue
+		[[ -z "$line" || "$line" =~ ^# ]] && continue
+		parse_repo_line "$line"
 
 		# Reset deploy flag for each repo
 		repo_deploy=false
@@ -450,7 +484,8 @@ deploy (){
 		repo_dir="${REPOS_DIR}/${repo}"
 		release="${OUTPUT_DIR}/${repo}"
 		ut "##### Processing '$repo' #####"
-		((repo_count++))
+		# Hidden repos are built and signed but tracked separately
+		if $repo_hidden; then ((hidden_count++)); else ((repo_count++)); fi
 
 		if [[ -d "${repo_dir}" ]]; then
 			ut "Checking if remote repo has changed since last deploy"
@@ -466,7 +501,7 @@ deploy (){
 					fi
 				else
 					ut "No changes to deploy for '$repo'"
-					((repo_skip++))
+					if $repo_hidden; then ((hidden_skip++)); else ((repo_skip++)); fi
 				fi
 			else
 				ut "Git remote update failed for '$repo'"
@@ -502,7 +537,7 @@ deploy (){
 			ut "Checking signature.."
 			if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
 				ut "Signature verified."
-				((repo_success++))
+				if $repo_hidden; then ((hidden_success++)); else ((repo_success++)); fi
 				date > "${release}.updated"
 			else
 				ut "Error: Signature verification failed for '$repo'"
