@@ -555,6 +555,14 @@ if "$SHOW_STATUS"; then
 	exit 0
 fi
 
+# Bootstrap: on a fresh start, publish the frontend immediately so the browser
+# gets a real page with an "initializing" state instead of a 404 or blank directory.
+if [[ ! -f "${OUTPUT_DIR}/index.html" ]]; then
+	ut "Bootstrap: publishing frontend before first deployment..."
+	publish_assets
+	printf '{"initializing":true}\n' > "${OUTPUT_DIR}/status.json"
+fi
+
 # main loop
 while true; do
 	weblog_init

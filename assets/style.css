@@ -52,6 +52,7 @@ header {
   text-align: center;
 }
 
+/* Sky atmosphere */
 header::before {
   content: '';
   position: absolute;
@@ -60,31 +61,37 @@ header::before {
     radial-gradient(ellipse at 25% 60%, rgba(168,85,247,0.14) 0%, transparent 55%),
     radial-gradient(ellipse at 75% 40%, rgba(244,114,182,0.12) 0%, transparent 55%);
   pointer-events: none;
+  z-index: 0;
 }
 
-/* Spinning wheel decorations */
+/* ── Spinning wheel decorations ─────────────────────── */
+
 .wheels {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .wheel {
   position: absolute;
-  opacity: 0.20;
   overflow: visible;
 }
 
-.wheel-1 { width: 130px; height: 130px; color: var(--purple); top: -30px; left:  5%; animation: spin 14s linear infinite; }
-.wheel-2 { width:  82px; height:  82px; color: var(--pink);   top:  18px; left: 14%; animation: spin  9s linear infinite reverse; }
-.wheel-3 { width: 108px; height: 108px; color: var(--cyan);   top: -12px; right: 7%; animation: spin 11s linear infinite; }
-.wheel-4 { width:  66px; height:  66px; color: var(--pink);   top:  30px; right:17%; animation: spin  7s linear infinite reverse; }
+/* Large background wheels — mostly off-screen for scale */
+.wheel-1 { width: 380px; height: 380px; color: var(--purple); top: -210px; left: -90px;  opacity: 0.18; animation: spin 22s linear infinite; }
+.wheel-3 { width: 320px; height: 320px; color: var(--cyan);   top: -170px; right: -75px; opacity: 0.15; animation: spin 17s linear infinite; }
+
+/* Small foreground accent wheels */
+.wheel-2 { width:  78px; height:  78px; color: var(--pink);   top: 14px; left:  17%; opacity: 0.32; animation: spin  8s linear infinite reverse; }
+.wheel-4 { width:  64px; height:  64px; color: var(--pink);   top: 20px; right: 20%; opacity: 0.28; animation: spin  6s linear infinite reverse; }
+
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .header-content {
   position: relative;
-  z-index: 1;
+  z-index: 4;
 }
 
 .logo {
@@ -120,6 +127,32 @@ main {
   flex: 1;
 }
 
+/* ── Init banner ────────────────────────────────────── */
+
+.init-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(168, 85, 247, 0.07);
+  border: 1px solid rgba(168, 85, 247, 0.22);
+  border-left: 3px solid var(--purple);
+  color: var(--text-muted);
+  padding: 1rem 1.5rem;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+}
+
+.init-banner.hidden { display: none; }
+
+.init-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--purple);
+  animation: pulse 2s ease-in-out infinite;
+}
+
 /* ── MOTD ───────────────────────────────────────────── */
 
 .motd {
@@ -128,9 +161,7 @@ main {
   border-left: 3px solid var(--purple);
   border-radius: var(--radius);
   padding: 1.25rem 1.5rem;
-  /* Scroll within the card — never let the card blow out the page width */
   overflow-x: auto;
-  /* Center the inline-block pre */
   text-align: center;
 }
 
@@ -146,8 +177,6 @@ main {
 }
 
 .motd pre {
-  /* inline-block shrinks to content width and respects max-width,
-     unlike display:table which can ignore max-width in some browsers */
   display: inline-block;
   max-width: 100%;
   font-family: 'Courier New', Courier, monospace;
@@ -158,7 +187,18 @@ main {
   vertical-align: top;
 }
 
-/* ── Stats ──────────────────────────────────────────── */
+/* ── Stats groups ───────────────────────────────────── */
+
+.stats-group { display: flex; flex-direction: column; gap: 0.75rem; }
+.stats-group.hidden { display: none; }
+
+.stats-group-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
 
 .stats {
   display: grid;
@@ -166,15 +206,22 @@ main {
   gap: 1rem;
 }
 
+/* 2-column variant for the primary stat boxes */
+.stats-2 {
+  grid-template-columns: repeat(2, 1fr);
+  max-width: 480px;
+}
+
 @media (max-width: 580px) {
-  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stats   { grid-template-columns: repeat(2, 1fr); }
+  .stats-2 { max-width: 100%; }
 
-  /* Hide the inner wheels that land behind the centered logo on narrow screens */
+  /* Scale down large background wheels on narrow screens */
+  .wheel-1 { width: 200px; height: 200px; left: -50px;  top: -100px; }
+  .wheel-3 { width: 180px; height: 180px; right: -40px; top: -80px;  }
+
+  /* Hide inner accent wheels that crowd the logo */
   .wheel-2, .wheel-4 { display: none; }
-
-  /* Push outer wheels to the corners, partially off-screen */
-  .wheel-1 { width: 80px; height: 80px; left: -18px; top: -18px; }
-  .wheel-3 { width: 70px; height: 70px; right: -16px; top: -14px; }
 }
 
 .stat-card {
@@ -223,17 +270,47 @@ main {
   margin-top: 0.3rem;
 }
 
-/* ── Unlisted stats group ───────────────────────────── */
+/* ── Last run details ───────────────────────────────── */
 
-.stats-group { display: flex; flex-direction: column; gap: 0.75rem; }
-.stats-group.hidden { display: none; }
+.run-details { margin-top: 0.25rem; }
 
-.stats-group-label {
-  font-size: 0.72rem;
-  font-weight: 600;
+.run-details > summary {
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.68rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding: 0.25rem 0;
+  user-select: none;
+  transition: color var(--transition);
+}
+
+.run-details > summary::-webkit-details-marker { display: none; }
+
+.run-details > summary::before {
+  content: '▶';
+  font-size: 0.5rem;
+  transition: transform var(--transition);
+}
+
+.run-details[open] > summary::before { transform: rotate(90deg); }
+.run-details > summary:hover { color: var(--text-muted); }
+
+.run-stats {
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.82rem;
   color: var(--text-muted);
+  padding: 0.4rem 0 0.1rem;
+}
+
+.run-val {
+  font-weight: 600;
+  color: var(--text);
 }
 
 /* ── Packages ───────────────────────────────────────── */

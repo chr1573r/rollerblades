@@ -69,11 +69,11 @@ async function copyToClipboard(text, btn) {
 function renderStats(stats, hiddenStats) {
   const s = stats || {};
   document.getElementById('val-total').textContent    = s.total    ?? '—';
+  document.getElementById('val-failed').textContent   = s.failed   ?? '—';
   document.getElementById('val-deployed').textContent = s.deployed ?? '—';
   document.getElementById('val-skipped').textContent  = s.skipped  ?? '—';
-  document.getElementById('val-failed').textContent   = s.failed   ?? '—';
 
-  const failCard = document.querySelector('.stat-card.danger');
+  const failCard = document.getElementById('public-failed-card');
   if (failCard) failCard.dataset.zero = (s.failed === 0) ? 'true' : 'false';
 
   const h = hiddenStats || {};
@@ -82,9 +82,9 @@ function renderStats(stats, hiddenStats) {
     if (h.total > 0) {
       group.classList.remove('hidden');
       document.getElementById('val-hidden-total').textContent    = h.total    ?? '—';
+      document.getElementById('val-hidden-failed').textContent   = h.failed   ?? '—';
       document.getElementById('val-hidden-deployed').textContent = h.deployed ?? '—';
       document.getElementById('val-hidden-skipped').textContent  = h.skipped  ?? '—';
-      document.getElementById('val-hidden-failed').textContent   = h.failed   ?? '—';
       const hiddenFailCard = document.getElementById('unlisted-failed-card');
       if (hiddenFailCard) hiddenFailCard.dataset.zero = (h.failed === 0) ? 'true' : 'false';
     } else {
@@ -215,10 +215,19 @@ function updateCountdown() {
 
 async function load() {
   const errorBanner = document.getElementById('error-banner');
+  const initBanner  = document.getElementById('init-banner');
   try {
     const data = await fetchJSON('status.json');
 
     if (errorBanner) errorBanner.classList.add('hidden');
+
+    // Server is still initialising — show the banner, skip rendering
+    if (data.initializing) {
+      if (initBanner) initBanner.classList.remove('hidden');
+      return;
+    }
+
+    if (initBanner) initBanner.classList.add('hidden');
 
     clonePrefix = data.clone_prefix || '';
 
