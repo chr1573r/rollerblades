@@ -206,15 +206,8 @@ main {
   gap: 1rem;
 }
 
-/* 2-column variant for the primary stat boxes */
-.stats-2 {
-  grid-template-columns: repeat(2, 1fr);
-  max-width: 480px;
-}
-
 @media (max-width: 580px) {
-  .stats   { grid-template-columns: repeat(2, 1fr); }
-  .stats-2 { max-width: 100%; }
+  .stats { grid-template-columns: repeat(2, 1fr); }
 
   /* Scale down large background wheels on narrow screens */
   .wheel-1 { width: 200px; height: 200px; left: -50px;  top: -100px; }
@@ -268,49 +261,6 @@ main {
   letter-spacing: 0.1em;
   color: var(--text-muted);
   margin-top: 0.3rem;
-}
-
-/* ── Last run details ───────────────────────────────── */
-
-.run-details { margin-top: 0.25rem; }
-
-.run-details > summary {
-  cursor: pointer;
-  list-style: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--text-dim);
-  padding: 0.25rem 0;
-  user-select: none;
-  transition: color var(--transition);
-}
-
-.run-details > summary::-webkit-details-marker { display: none; }
-
-.run-details > summary::before {
-  content: '▶';
-  font-size: 0.5rem;
-  transition: transform var(--transition);
-}
-
-.run-details[open] > summary::before { transform: rotate(90deg); }
-.run-details > summary:hover { color: var(--text-muted); }
-
-.run-stats {
-  display: flex;
-  gap: 1.5rem;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  padding: 0.4rem 0 0.1rem;
-}
-
-.run-val {
-  font-weight: 600;
-  color: var(--text);
 }
 
 /* ── Packages ───────────────────────────────────────── */

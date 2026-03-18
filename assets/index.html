@@ -120,44 +120,46 @@
 
     <div class="stats-group" id="public-stats-group">
       <div class="stats-group-label">Packages</div>
-      <div class="stats stats-2">
+      <div class="stats">
         <div class="stat-card">
           <div class="stat-value" id="val-total">—</div>
-          <div class="stat-label">total</div>
+          <div class="stat-label">packages</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-value" id="val-deployed">—</div>
+          <div class="stat-label">deployed</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-value" id="val-skipped">—</div>
+          <div class="stat-label">skipped</div>
         </div>
         <div class="stat-card danger" id="public-failed-card">
           <div class="stat-value" id="val-failed">—</div>
           <div class="stat-label">failed</div>
         </div>
       </div>
-      <details class="run-details">
-        <summary>Last run</summary>
-        <div class="run-stats">
-          <span><span class="run-val" id="val-deployed">—</span> deployed</span>
-          <span><span class="run-val" id="val-skipped">—</span> skipped</span>
-        </div>
-      </details>
     </div>
 
     <div class="stats-group hidden" id="unlisted-stats-group">
       <div class="stats-group-label">Unlisted packages</div>
-      <div class="stats stats-2">
+      <div class="stats">
         <div class="stat-card">
           <div class="stat-value" id="val-hidden-total">—</div>
-          <div class="stat-label">total</div>
+          <div class="stat-label">packages</div>
+        </div>
+        <div class="stat-card success">
+          <div class="stat-value" id="val-hidden-deployed">—</div>
+          <div class="stat-label">deployed</div>
+        </div>
+        <div class="stat-card warning">
+          <div class="stat-value" id="val-hidden-skipped">—</div>
+          <div class="stat-label">skipped</div>
         </div>
         <div class="stat-card danger" id="unlisted-failed-card">
           <div class="stat-value" id="val-hidden-failed">—</div>
           <div class="stat-label">failed</div>
         </div>
       </div>
-      <details class="run-details">
-        <summary>Last run</summary>
-        <div class="run-stats">
-          <span><span class="run-val" id="val-hidden-deployed">—</span> deployed</span>
-          <span><span class="run-val" id="val-hidden-skipped">—</span> skipped</span>
-        </div>
-      </details>
     </div>
 
     <section class="packages-section">
