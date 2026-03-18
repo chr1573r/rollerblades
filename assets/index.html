@@ -17,7 +17,7 @@
   <header>
     <div class="wheels" aria-hidden="true">
 
-      <!-- Wheel 1 -->
+      <!-- Wheel 1 (large background, top-left) -->
       <svg class="wheel wheel-1" viewBox="0 0 100 100" fill="none">
         <defs><path id="tp-w1" d="M50,9 A41,41 0 1,1 49.999,9"/></defs>
         <circle cx="50" cy="50" r="43" stroke="currentColor" stroke-width="11"/>
@@ -37,7 +37,7 @@
         <circle cx="50" cy="50" r="5.5" fill="currentColor" opacity="0.9"/>
       </svg>
 
-      <!-- Wheel 2 -->
+      <!-- Wheel 2 (small accent, mid-left) -->
       <svg class="wheel wheel-2" viewBox="0 0 100 100" fill="none">
         <defs><path id="tp-w2" d="M50,9 A41,41 0 1,1 49.999,9"/></defs>
         <circle cx="50" cy="50" r="43" stroke="currentColor" stroke-width="11"/>
@@ -57,7 +57,7 @@
         <circle cx="50" cy="50" r="5.5" fill="currentColor" opacity="0.9"/>
       </svg>
 
-      <!-- Wheel 3 -->
+      <!-- Wheel 3 (large background, top-right) -->
       <svg class="wheel wheel-3" viewBox="0 0 100 100" fill="none">
         <defs><path id="tp-w3" d="M50,9 A41,41 0 1,1 49.999,9"/></defs>
         <circle cx="50" cy="50" r="43" stroke="currentColor" stroke-width="11"/>
@@ -77,7 +77,7 @@
         <circle cx="50" cy="50" r="5.5" fill="currentColor" opacity="0.9"/>
       </svg>
 
-      <!-- Wheel 4 -->
+      <!-- Wheel 4 (small accent, mid-right) -->
       <svg class="wheel wheel-4" viewBox="0 0 100 100" fill="none">
         <defs><path id="tp-w4" d="M50,9 A41,41 0 1,1 49.999,9"/></defs>
         <circle cx="50" cy="50" r="43" stroke="currentColor" stroke-width="11"/>
@@ -98,6 +98,7 @@
       </svg>
 
     </div>
+
     <div class="header-content">
       <pre class="logo">|)  || _   | |   | _  _
 |\()||(/_|`|)|(|(|(/__\</pre>
@@ -107,50 +108,56 @@
 
   <main>
 
+    <div id="init-banner" class="init-banner hidden">
+      <span class="init-dot"></span>
+      Server is initializing — first deployment in progress…
+    </div>
+
     <section id="motd-section" class="motd hidden">
       <div class="motd-label">Message of the Day</div>
       <pre id="motd-content"></pre>
     </section>
 
-    <section class="stats">
-      <div class="stat-card">
-        <div class="stat-value" id="val-total">—</div>
-        <div class="stat-label">packages</div>
+    <div class="stats-group" id="public-stats-group">
+      <div class="stats-group-label">Packages</div>
+      <div class="stats stats-2">
+        <div class="stat-card">
+          <div class="stat-value" id="val-total">—</div>
+          <div class="stat-label">total</div>
+        </div>
+        <div class="stat-card danger" id="public-failed-card">
+          <div class="stat-value" id="val-failed">—</div>
+          <div class="stat-label">failed</div>
+        </div>
       </div>
-      <div class="stat-card success">
-        <div class="stat-value" id="val-deployed">—</div>
-        <div class="stat-label">deployed</div>
-      </div>
-      <div class="stat-card warning">
-        <div class="stat-value" id="val-skipped">—</div>
-        <div class="stat-label">skipped</div>
-      </div>
-      <div class="stat-card danger">
-        <div class="stat-value" id="val-failed">—</div>
-        <div class="stat-label">failed</div>
-      </div>
-    </section>
+      <details class="run-details">
+        <summary>Last run</summary>
+        <div class="run-stats">
+          <span><span class="run-val" id="val-deployed">—</span> deployed</span>
+          <span><span class="run-val" id="val-skipped">—</span> skipped</span>
+        </div>
+      </details>
+    </div>
 
     <div class="stats-group hidden" id="unlisted-stats-group">
       <div class="stats-group-label">Unlisted packages</div>
-      <div class="stats">
+      <div class="stats stats-2">
         <div class="stat-card">
           <div class="stat-value" id="val-hidden-total">—</div>
-          <div class="stat-label">packages</div>
-        </div>
-        <div class="stat-card success">
-          <div class="stat-value" id="val-hidden-deployed">—</div>
-          <div class="stat-label">deployed</div>
-        </div>
-        <div class="stat-card warning">
-          <div class="stat-value" id="val-hidden-skipped">—</div>
-          <div class="stat-label">skipped</div>
+          <div class="stat-label">total</div>
         </div>
         <div class="stat-card danger" id="unlisted-failed-card">
           <div class="stat-value" id="val-hidden-failed">—</div>
           <div class="stat-label">failed</div>
         </div>
       </div>
+      <details class="run-details">
+        <summary>Last run</summary>
+        <div class="run-stats">
+          <span><span class="run-val" id="val-hidden-deployed">—</span> deployed</span>
+          <span><span class="run-val" id="val-hidden-skipped">—</span> skipped</span>
+        </div>
+      </details>
     </div>
 
     <section class="packages-section">
