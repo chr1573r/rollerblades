@@ -140,13 +140,14 @@ Configuration can be provided via config file (`cfg/settings.txt`) or environmen
 Environment variables take precedence over config file values.
 
 | Setting | Env Variable | Default | Description |
-|---------|--------------|---------|-------------|
+| --------- | -------------- | --------- | ------------- |
 | `SLEEP_TIME` | `RB_SLEEP_TIME` | `5m` | Interval between update checks |
 | `OUTPUT_DIR` | `RB_OUTPUT_DIR` | `/output` | Where to publish archives |
 | `CLONE_PREFIX` | `RB_CLONE_PREFIX` | `https://github.com` | Git URL prefix |
 | `CLONE_SUFFIX` | `RB_CLONE_SUFFIX` | `.git` | Git URL suffix |
 | `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | `./keys/private.pem` | Path to private key |
 | `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | `./keys/public.pem` | Path to public key |
+| `INCLUDE_RB_METADATA` | `INCLUDE_RB_METADATA` | `false` | Adds a package manifest to each archive |
 | `LOG_FILE` | `RB_LOG_FILE` | - | Optional internal log file |
 | `MOTD` | `RB_MOTD` | `cfg/motd.txt` | Optional message of the day file |
 
@@ -179,6 +180,16 @@ openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 
 The public key is automatically copied to the output directory as `rollerblades.pub` for clients to verify packages.
 
+## Package metadata
+
+If enabled, Rollerblades can generate and include a package manifest to each archive.
+`.rb-package.manifest` is a plain text file that will contain metadata from when the archive was created.
+
+| Key | description |
+| -------------- | -------------- |
+| `NAME` | Repository name |
+| `COMMIT_SHA` | Git clones directory |
+
 ## Message of the Day (MOTD)
 
 You can display a server message to clients by creating an MOTD file:
@@ -188,6 +199,7 @@ echo "Welcome to my package server!" > cfg/motd.txt
 ```
 
 The MOTD is:
+
 - Displayed on the `index.html` status page (HTML escaped for security)
 - Served as `motd.txt` for sk8 clients to display
 - Automatically sanitized (max 4KB, control characters stripped)
@@ -195,7 +207,7 @@ The MOTD is:
 ## Docker Volumes
 
 | Path | Description |
-|------|-------------|
+| ------ | ------------- |
 | `/cfg` | Config directory containing repos.txt (required, mount read-only) |
 | `/keys` | Signing keys (auto-generated if not mounted) |
 | `/root/.ssh` | SSH keys for cloning private repos (optional, mount read-only) |
