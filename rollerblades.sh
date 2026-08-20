@@ -180,6 +180,7 @@ CLONE_PREFIX="${RB_CLONE_PREFIX:-${CLONE_PREFIX:-https://github.com}}"
 CLONE_SUFFIX="${RB_CLONE_SUFFIX:-${CLONE_SUFFIX:-.git}}"
 SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-${SCRIPT_DIR}/keys/private.pem}}"
 SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-${SCRIPT_DIR}/keys/public.pem}}"
+INCLUDE_RB_METADATA="false"
 LOG_FILE="${RB_LOG_FILE:-${LOG_FILE:-}}"
 MOTD="${RB_MOTD:-${MOTD:-}}"
 
@@ -272,6 +273,16 @@ sign_verify(){ # sign_check <public key> <signature file> <file to verify>
 multilog(){ 
 	ut "$*"
 	weblog "$*"
+}
+
+# generate metadata manifest for current package.
+generate_manifest(){
+	cat <<-EOF
+	NAME=${release}
+	PACKAGE_DATE=$(date +%s)
+	COMMIT_SHA=$(git log -1 --pretty=%H)
+	COMMIT_DATE=$(git log -1 --pretty=%at)
+	EOF
 }
 
 # log to internal log 
@@ -522,7 +533,10 @@ deploy (){
 			if (
 				set -o pipefail
 				cd "${repo_dir}" || exit 1
+				[[ "$INCLUDE_RB_METADATA" == "true" ]] && generate_manifest > .rb-package.manifest
 				git archive --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
+				[[ "$INCLUDE_RB_METADATA" == "true" ]] && rm .rb-package.manifest
+				
 			); then
 				mv "${release}.tar.gz.tmp" "${release}.tar.gz"
 			else
@@ -538,7 +552,7 @@ deploy (){
 			if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
 				ut "Signature verified."
 				if $repo_hidden; then ((hidden_success++)); else ((repo_success++)); fi
-				date > "${release}.updated"
+				date %s > "${release}.updated"
 			else
 				ut "Error: Signature verification failed for '$repo'"
 				rm -f "${release}.tar.gz" "${release}.signature"

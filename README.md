@@ -180,15 +180,17 @@ openssl rsa -in keys/private.pem -pubout -out keys/public.pem
 
 The public key is automatically copied to the output directory as `rollerblades.pub` for clients to verify packages.
 
-## Package metadata
+## Package Metadata
 
-If enabled, Rollerblades can generate and include a package manifest to each archive.
-`.rb-package.manifest` is a plain text file that will contain metadata from when the archive was created.
+If enabled, Rollerblades can generate and include a manifest file in the archive.
+`.rb-package.manifest` is a plain text file that will contain the following key-values:
 
-| Key | description |
-| -------------- | -------------- |
-| `NAME` | Repository name |
-| `COMMIT_SHA` | Git clones directory |
+| Key | Description | Example |
+| -------------- | -------------- | - |
+| `NAME` | Repository/package name | `superdupr` |
+| `PACKAGE_DATE` | When the archive was created, in epoch/UNIX timestamp format | `1787253702` |
+| `COMMIT_SHA` | SHA-1 hash of the most recent commit | `c0f3344929faef298d486306c738e870798da3c3` |
+| `COMMIT_DATE` | Date of commit, epoch/UNIX timestamp format | `1787171931` |
 
 ## Message of the Day (MOTD)
 
