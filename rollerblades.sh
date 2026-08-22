@@ -551,7 +551,7 @@ deploy (){
 			if sign_verify "$SIGNING_PUBLIC_KEY" "${release}.signature" "${release}.tar.gz" >/dev/null 2>&1; then
 				ut "Signature verified."
 				if $repo_hidden; then ((hidden_success++)); else ((repo_success++)); fi
-				date %s > "${release}.updated"
+				date > "${release}.updated"
 			else
 				ut "Error: Signature verification failed for '$repo'"
 				rm -f "${release}.tar.gz" "${release}.signature"
