@@ -180,7 +180,7 @@ CLONE_PREFIX="${RB_CLONE_PREFIX:-${CLONE_PREFIX:-https://github.com}}"
 CLONE_SUFFIX="${RB_CLONE_SUFFIX:-${CLONE_SUFFIX:-.git}}"
 SIGNING_PRIVATE_KEY="${RB_SIGNING_PRIVATE_KEY:-${SIGNING_PRIVATE_KEY:-${SCRIPT_DIR}/keys/private.pem}}"
 SIGNING_PUBLIC_KEY="${RB_SIGNING_PUBLIC_KEY:-${SIGNING_PUBLIC_KEY:-${SCRIPT_DIR}/keys/public.pem}}"
-INCLUDE_RB_METADATA="false"
+INCLUDE_RB_METADATA="${RB_INCLUDE_RB_METADATA:-${INCLUDE_RB_METADATA:false}}"
 LOG_FILE="${RB_LOG_FILE:-${LOG_FILE:-}}"
 MOTD="${RB_MOTD:-${MOTD:-}}"
 
@@ -533,10 +533,9 @@ deploy (){
 			if (
 				set -o pipefail
 				cd "${repo_dir}" || exit 1
-				[[ "$INCLUDE_RB_METADATA" == "true" ]] && generate_manifest > .rb-package.manifest
+				if [[ "$INCLUDE_RB_METADATA" == "true" ]]; then generate_manifest > .rb-package.manifest; fi
 				git archive --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
-				[[ "$INCLUDE_RB_METADATA" == "true" ]] && rm .rb-package.manifest
-				
+				if [[ "$INCLUDE_RB_METADATA" == "true" ]]; then rm .rb-package.manifest; fi
 			); then
 				mv "${release}.tar.gz.tmp" "${release}.tar.gz"
 			else

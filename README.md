@@ -147,7 +147,7 @@ Environment variables take precedence over config file values.
 | `CLONE_SUFFIX` | `RB_CLONE_SUFFIX` | `.git` | Git URL suffix |
 | `SIGNING_PRIVATE_KEY` | `RB_SIGNING_PRIVATE_KEY` | `./keys/private.pem` | Path to private key |
 | `SIGNING_PUBLIC_KEY` | `RB_SIGNING_PUBLIC_KEY` | `./keys/public.pem` | Path to public key |
-| `INCLUDE_RB_METADATA` | `INCLUDE_RB_METADATA` | `false` | Adds a package manifest to each archive |
+| `INCLUDE_RB_METADATA` | `RB_INCLUDE_RB_METADATA` | `false` | Adds a package manifest to each archive |
 | `LOG_FILE` | `RB_LOG_FILE` | - | Optional internal log file |
 | `MOTD` | `RB_MOTD` | `cfg/motd.txt` | Optional message of the day file |
 
