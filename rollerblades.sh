@@ -533,9 +533,13 @@ deploy (){
 			if (
 				set -o pipefail
 				cd "${repo_dir}" || exit 1
-				if [[ "$INCLUDE_RB_METADATA" == "true" ]]; then generate_manifest > .rb-package.manifest; fi
-				git archive --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
-				if [[ "$INCLUDE_RB_METADATA" == "true" ]]; then rm .rb-package.manifest; fi
+				if [[ "$INCLUDE_RB_METADATA" == "true" ]]; then
+					generate_manifest > .rb-package.manifest
+					git archive --add-file=.rb-package.manifest --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
+					rm .rb-package.manifest
+				else
+					git archive --format=tar HEAD | gzip > "${release}.tar.gz.tmp"
+				fi
 			); then
 				mv "${release}.tar.gz.tmp" "${release}.tar.gz"
 			else
